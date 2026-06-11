@@ -251,8 +251,11 @@ def duplicated_ad_id_differences(dataframe, columns=IMPORTANT_COLUMNS):
 
 
 def group_size_summary(dataframe):
-    """Count rows by experiment group and compute each group's row share."""
-    summary = dataframe["group"].value_counts(dropna=False).rename_axis("group").reset_index(name="rows")
+    """Count rows by assignment status and compute each row share."""
+    assignment_status = dataframe["group"].where(dataframe["group"].isin(VALID_GROUPS), "Unassigned")
+    summary = assignment_status.value_counts().rename_axis("group").reset_index(name="rows")
+    group_order = pd.Categorical(summary["group"], categories=VALID_GROUPS + ["Unassigned"], ordered=True)
+    summary = summary.assign(group_order=group_order).sort_values("group_order").drop(columns="group_order")
     summary["share"] = summary["rows"] / len(dataframe)
     return summary
 
@@ -619,11 +622,24 @@ def print_section(title):
 
 def lead_channel_coverage(dataframe):
     """Compute the share of rows with activity in each lead channel."""
+    metric_columns = existing_columns(dataframe, METRIC_COLUMNS)
     coverage = pd.DataFrame(
         {
-            "channel": METRIC_COLUMNS,
-            "share_with_event": [dataframe[column].gt(0).mean() for column in METRIC_COLUMNS],
+            "channel": metric_columns,
+            "share_with_event": [dataframe[column].gt(0).mean() for column in metric_columns],
         }
+    )
+    coverage = pd.concat(
+        [
+            coverage,
+            pd.DataFrame(
+                {
+                    "channel": ["any_lead"],
+                    "share_with_event": [dataframe[metric_columns].gt(0).any(axis=1).mean()],
+                }
+            ),
+        ],
+        ignore_index=True,
     )
     coverage["channel"] = coverage["channel"].map(DISPLAY_VALUE_ALIASES).fillna(coverage["channel"])
     return coverage.sort_values("share_with_event")
@@ -785,18 +801,26 @@ def simplify_fully_labeled_bar_axis(ax, axis="vertical"):
 
 
 def plot_row_coverage(raw_data, ab_data, excluded_data):
-    """Plot how much raw data is usable for the A/B comparison."""
+    """Plot raw rows by experiment assignment status."""
     row_coverage = pd.DataFrame(
         {
-            "status": ["A/B assigned", "Missing group"],
-            "rows": [len(ab_data), len(excluded_data)],
+            "status": ["A", "B", "Unassigned"],
+            "rows": [
+                int((raw_data["group"] == "A").sum()),
+                int((raw_data["group"] == "B").sum()),
+                len(excluded_data),
+            ],
         }
     )
     row_coverage["share"] = row_coverage["rows"] / len(raw_data)
 
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(row_coverage["status"], row_coverage["rows"], color=[PLOT_COLORS["A"], PLOT_COLORS["neutral"]])
-    finish_plot(ax, "Rows usable for A/B comparison", xlabel=None, ylabel="Rows")
+    ax.bar(
+        row_coverage["status"],
+        row_coverage["rows"],
+        color=[PLOT_COLORS["A"], PLOT_COLORS["B"], PLOT_COLORS["neutral"]],
+    )
+    finish_plot(ax, "Rows by experiment assignment", xlabel=None, ylabel="Rows")
     max_rows = row_coverage["rows"].max()
 
     for patch, (_, row) in zip(ax.patches, row_coverage.iterrows()):
@@ -821,16 +845,16 @@ def plot_row_coverage(raw_data, ab_data, excluded_data):
 
 
 def plot_lead_channel_coverage(dataframe):
-    """Plot event coverage by individual lead channel."""
+    """Plot event coverage by lead channel and combined lead KPI."""
     coverage = lead_channel_coverage(dataframe)
     fig, ax = plt.subplots(figsize=(7, 4))
     plot_labeled_horizontal_bars(
         ax,
         coverage["channel"],
         coverage["share_with_event"],
-        "Rows with at least one event by lead channel",
+        "Rows with at least one lead event",
         xlabel="Share of raw rows",
-        colors=PLOT_COLORS["B"],
+        colors=[PLOT_COLORS["neutral"] if channel == "Any Lead" else PLOT_COLORS["B"] for channel in coverage["channel"]],
         percent_x=True,
         percent_labels=True,
     )
@@ -838,14 +862,14 @@ def plot_lead_channel_coverage(dataframe):
 
 
 def plot_group_sizes(dataframe):
-    """Plot A/B row counts."""
+    """Plot row counts by assignment status."""
     group_sizes = group_size_summary(dataframe).copy()
     fig, ax = plt.subplots(figsize=(6, 4))
     plot_labeled_vertical_bars(
         ax,
         group_sizes["group"],
         group_sizes["rows"],
-        "A/B-assigned records by group",
+        "Rows by experiment assignment",
         ylabel="Records",
         colors=group_colors(group_sizes["group"]),
         decimals=0,
@@ -908,28 +932,35 @@ def plot_average_leads_by_channel(outcomes):
 
 
 def plot_total_leads_distribution(dataframe):
-    """Plot clipped total-leads distributions for A and B."""
+    """Plot the clipped total-leads distribution."""
     clip_at = dataframe["total_leads"].quantile(0.99)
     bins = range(0, int(clip_at) + 2)
-    fig, axes = plt.subplots(2, 1, figsize=(9, 6), sharex=True, sharey=True)
-
-    for ax, group in zip(axes, ["A", "B"]):
-        group_data = dataframe.loc[dataframe["group"] == group, "total_leads"].clip(upper=clip_at)
-        ax.hist(group_data, bins=bins, density=True, color=PLOT_COLORS[group], edgecolor="white", linewidth=0.5)
-        finish_plot(ax, f"Group {group}", xlabel=None, ylabel="Density")
-        ax.text(0.98, 0.82, f"Mean: {group_data.mean():.2f}", transform=ax.transAxes, ha="right", fontsize=10)
-
-    axes[-1].set_xlabel("Total leads per ad (clipped at p99)")
-    fig.suptitle("Total leads per ad distribution by group", x=0.125, ha="left", fontweight="bold")
+    lead_data = dataframe["total_leads"].clip(upper=clip_at)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.hist(lead_data, bins=bins, density=True, color=PLOT_COLORS["neutral"], edgecolor="white", linewidth=0.5)
+    finish_plot(
+        ax,
+        "Total leads per ad distribution",
+        xlabel="Total leads per ad (clipped at p99)",
+        ylabel="Density",
+    )
+    ax.text(0.98, 0.82, f"Mean: {lead_data.mean():.2f}", transform=ax.transAxes, ha="right", fontsize=10)
     plt.tight_layout()
-    return fig, axes
+    return fig, ax
 
 
 def plot_duplicate_id_sensitivity(dataframe):
     """Plot whether duplicate-ID removal changes the lead-rate result."""
     sensitivity = duplicate_id_sensitivity(dataframe).set_index("metric").loc[["A lead rate", "B lead rate"]]
+    sensitivity = sensitivity.rename(index={"A lead rate": "A", "B lead rate": "B"}).T
+    sensitivity = sensitivity.rename(
+        index={
+            "with_duplicate_id_rows": "With duplicate rows",
+            "excluding_duplicate_id_rows": "Excluding duplicate rows",
+        }
+    )
     fig, ax = plt.subplots(figsize=(8, 4))
-    sensitivity.T.plot(kind="bar", ax=ax, color=[PLOT_COLORS["A"], PLOT_COLORS["B"]])
+    sensitivity.plot(kind="bar", ax=ax, color=[PLOT_COLORS["A"], PLOT_COLORS["B"]])
     finish_plot(ax, "Duplicate-ID sensitivity", xlabel=None, ylabel="Lead rate", percent_y=True)
     add_bar_labels(ax, percent=True, decimals=1)
     simplify_fully_labeled_bar_axis(ax)
@@ -1104,6 +1135,7 @@ DISPLAY_HEADER_ALIASES = {
 }
 DISPLAY_VALUE_ALIASES = {
     "A lead rate": "A Lead Rate",
+    "any_lead": "Any Lead",
     "A ads": "A Ads",
     "A ads with leads": "A Ads With Leads",
     "B lead rate": "B Lead Rate",
