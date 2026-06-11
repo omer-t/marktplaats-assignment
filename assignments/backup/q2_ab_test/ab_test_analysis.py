@@ -3,7 +3,7 @@ import pandas as pd
 pd.set_option("display.float_format", "{:.3f}".format)
 
 
-DATA_PATH = "../../../data/Adevinta Cars Dataset May 2019.csv"
+DATA_PATH = "../../data_analyst/data/Adevinta Cars Dataset May 2019.csv"
 
 COLUMN_DTYPES = {
     "src_ad_id": "string",
