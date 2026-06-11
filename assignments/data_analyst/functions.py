@@ -593,7 +593,7 @@ def business_insight_table(ab_data):
                 "At a 5% significance level, the B-A lead-rate gap is statistically significant (p < 0.001). Approximate power for the observed effect is above 99.9%, meaning this sample size would be very likely to detect a true effect of this size.",
                 f"B also has higher average total leads per ad ({outcomes.loc['B', 'avg_total_leads']:.3f} vs {outcomes.loc['A', 'avg_total_leads']:.3f}).",
                 f"The largest average numeric balance gap is {largest_numeric_gap['dimension']} ({pct(largest_numeric_gap['pct_diff_vs_A'])} B vs A).",
-                "The result is directionally positive, but should be framed as causal only after confirming the assignment process and exposure logging.",
+                "Treatment group B is directionally positive. I would frame it as causal only if the assignment setup is validated.",
             ],
         }
     )
@@ -887,7 +887,7 @@ def plot_numeric_balance(dataframe):
         ax,
         numeric_balance["dimension"],
         numeric_balance["pct_diff_vs_A"],
-        "Numeric balance: percent difference B vs A",
+        "How B differs from A",
         xlabel="Percent difference",
         colors=signed_difference_colors(numeric_balance["pct_diff_vs_A"]),
         percent_x=True,
