@@ -6,7 +6,7 @@ and plotting.
 """
 
 from pathlib import Path
-from math import erf, erfc, sqrt
+from math import erfc, sqrt
 from numbers import Number
 import os
 import tempfile
@@ -21,7 +21,10 @@ import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = PROJECT_ROOT / "data" / "Adevinta Cars Dataset May 2019.csv"
+ASSIGNMENT_DIR = Path(__file__).resolve().parent
+DATA_FILENAME = "Adevinta Cars Dataset May 2019.csv"
+DATA_PATH = ASSIGNMENT_DIR / "data" / DATA_FILENAME
+LEGACY_DATA_PATH = PROJECT_ROOT / "data" / DATA_FILENAME
 
 MISSING_VALUE_MARKERS = ["?"]
 VALID_GROUPS = ["A", "B"]
@@ -81,6 +84,18 @@ SEGMENT_SOURCE_COLUMNS = {
     "photo_count_band": "photo_cnt",
 }
 PLOT_COLORS = {"A": "#4C78A8", "B": "#F58518", "diff": "#54A24B", "neutral": "#8A8F98"}
+NUMERIC_BALANCE_AXIS_LABELS = {
+    "aantaldeuren": "Aantal Deuren (Doors)",
+    "aantalstoelen": "Aantal Stoelen (Seats)",
+    "bouwjaar": "Bouwjaar (Build Year)",
+    "car_age": "Car Age",
+    "days_live": "Days Live",
+    "emissie": "Emissie (Emissions)",
+    "kmstand": "Kmstand (Mileage)",
+    "photo_cnt": "Photo Count",
+    "price": "Price",
+    "vermogen": "Vermogen (Power)",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -93,11 +108,6 @@ def pct(series_or_number):
     if pd.isna(series_or_number):
         return pd.NA
     return f"{series_or_number:.2%}"
-
-
-def normal_cdf(value):
-    """Return the standard normal cumulative distribution for a z value."""
-    return 0.5 * (1 + erf(value / sqrt(2)))
 
 
 def infer_numeric_dtype(series):
@@ -119,6 +129,10 @@ def infer_numeric_dtype(series):
 
 def read_ab_test_data(data_path=DATA_PATH):
     """Read the car ads dataset and coerce known numeric/date columns."""
+    data_path = Path(data_path)
+    if not data_path.exists() and data_path == DATA_PATH and LEGACY_DATA_PATH.exists():
+        data_path = LEGACY_DATA_PATH
+
     dataframe = pd.read_csv(
         data_path,
         dtype={"src_ad_id": "string"},
@@ -260,6 +274,39 @@ def group_size_summary(dataframe):
     return summary
 
 
+def assignment_srm_summary(dataframe, expected_a_share=0.5):
+    """Run a sample-ratio mismatch check for A/B-assigned rows."""
+    group_sizes = group_size_summary(dataframe).set_index("group")
+    a_rows = int(group_sizes.loc["A", "rows"])
+    b_rows = int(group_sizes.loc["B", "rows"])
+    ab_rows = a_rows + b_rows
+    expected = pd.Series({"A": ab_rows * expected_a_share, "B": ab_rows * (1 - expected_a_share)})
+    observed = pd.Series({"A": a_rows, "B": b_rows})
+    chi_square = ((observed - expected) ** 2 / expected).sum()
+    p_value = erfc(sqrt(chi_square / 2))
+
+    return pd.DataFrame(
+        {
+            "metric": [
+                "expected_A_share",
+                "A rows",
+                "B rows",
+                "A share of assigned rows",
+                "B share of assigned rows",
+                "Sample-ratio p-value",
+            ],
+            "value": [
+                expected_a_share,
+                a_rows,
+                b_rows,
+                a_rows / ab_rows,
+                b_rows / ab_rows,
+                p_value,
+            ],
+        }
+    )
+
+
 def excluded_group_summary(raw_data, excluded_data):
     """Summarize how many raw rows are excluded from the A/B comparison."""
     dropped_rows = len(excluded_data)
@@ -283,6 +330,52 @@ def lead_metric_quality(dataframe):
             "negative_rows": [int((dataframe[column] < 0).sum()) for column in metric_columns],
             "zero_rows": [int((dataframe[column] == 0).sum()) for column in metric_columns],
             "max_value": [dataframe[column].max() for column in metric_columns],
+        }
+    )
+
+
+def missing_lead_metric_sensitivity(raw_data):
+    """Compare primary lift with missing lead metrics filled as zero vs excluded."""
+    metric_columns = existing_columns(raw_data, METRIC_COLUMNS)
+    primary_ab_data, _ = prepare_ab_data(raw_data)
+    complete_raw_data = raw_data.loc[
+        raw_data["group"].isin(VALID_GROUPS) & raw_data[metric_columns].notna().all(axis=1)
+    ].copy()
+    complete_ab_data, _ = prepare_ab_data(complete_raw_data)
+
+    primary = lead_rate_lift(primary_ab_data).set_index("metric")["value"]
+    complete = lead_rate_lift(complete_ab_data).set_index("metric")["value"]
+    dropped_rows = len(primary_ab_data) - len(complete_ab_data)
+
+    return pd.DataFrame(
+        {
+            "metric": [
+                "rows",
+                "rows_dropped",
+                "pct_rows_dropped",
+                "A lead rate",
+                "B lead rate",
+                "B minus A lead-rate difference",
+                "Relative lift vs A",
+            ],
+            "missing_as_zero": [
+                len(primary_ab_data),
+                0,
+                0,
+                primary["A lead rate"],
+                primary["B lead rate"],
+                primary["B minus A lead-rate difference"],
+                primary["Relative lift vs A"],
+            ],
+            "excluding_missing_metric_rows": [
+                len(complete_ab_data),
+                dropped_rows,
+                dropped_rows / len(primary_ab_data),
+                complete["A lead rate"],
+                complete["B lead rate"],
+                complete["B minus A lead-rate difference"],
+                complete["Relative lift vs A"],
+            ],
         }
     )
 
@@ -365,13 +458,6 @@ def lead_rate_inference(dataframe):
     z_stat = diff / pooled_standard_error
     two_sided_p_value = erfc(abs(z_stat) / sqrt(2))
 
-    # Approximate achieved power for the observed effect size. This is useful
-    # as a notebook diagnostic, not as a replacement for pre-test power design.
-    observed_effect_power = (
-        1 - normal_cdf((TWO_SIDED_Z_CRITICAL_95 * pooled_standard_error - abs(diff)) / unpooled_standard_error)
-        + normal_cdf((-TWO_SIDED_Z_CRITICAL_95 * pooled_standard_error - abs(diff)) / unpooled_standard_error)
-    )
-
     return pd.DataFrame(
         {
             "metric": [
@@ -387,7 +473,6 @@ def lead_rate_inference(dataframe):
                 "Approx. 95% CI upper for difference",
                 "z statistic",
                 "Two-sided p-value",
-                "Approx. power for observed effect",
             ],
             "value": [
                 SIGNIFICANCE_LEVEL,
@@ -402,7 +487,6 @@ def lead_rate_inference(dataframe):
                 diff + TWO_SIDED_Z_CRITICAL_95 * unpooled_standard_error,
                 z_stat,
                 two_sided_p_value,
-                observed_effect_power,
             ],
         }
     )
@@ -462,19 +546,48 @@ def numeric_balance_summary(dataframe):
     if {"A", "B"}.issubset(summary.columns):
         summary["diff_B_minus_A"] = summary["B"] - summary["A"]
         summary["pct_diff_vs_A"] = summary["diff_B_minus_A"] / summary["A"]
+        group_std = dataframe.groupby("group")[dimension_columns].std().T
+        pooled_std = (((group_std["A"] ** 2) + (group_std["B"] ** 2)) / 2) ** 0.5
+        summary["standardized_diff"] = summary["diff_B_minus_A"] / pooled_std.values
     return summary
 
 
 def categorical_balance_summary(dataframe, column, top_n=8):
     """Compare group shares for the most common values in a categorical column."""
-    top_values = dataframe[column].value_counts(dropna=False).head(top_n).index
-    filtered = dataframe.loc[dataframe[column].isin(top_values)].copy()
-    counts = pd.crosstab(filtered[column], filtered["group"], dropna=False)
-    shares = counts.div(counts.sum(axis=0), axis=1)
+    category_values = dataframe[column].astype("object").where(dataframe[column].notna(), "Missing")
+    top_values = category_values.value_counts(dropna=False).head(top_n).index
+    filtered = dataframe.loc[category_values.isin(top_values)].copy()
+    filtered_category_values = category_values.loc[filtered.index]
+    counts = pd.crosstab(filtered_category_values, filtered["group"], dropna=False)
+    shares = counts.div(dataframe["group"].value_counts(), axis=1)
     summary = shares.reset_index()
+    summary = summary.rename(columns={summary.columns[0]: column})
     if {"A", "B"}.issubset(summary.columns):
         summary["share_diff_B_minus_A"] = summary["B"] - summary["A"]
     return summary
+
+
+def categorical_balance_overview(dataframe, top_n=8):
+    """Return the largest top-category A/B share gap for each categorical dimension."""
+    rows = []
+    for column in existing_columns(dataframe, CATEGORICAL_DIMENSION_COLUMNS):
+        summary = categorical_balance_summary(dataframe, column, top_n=top_n)
+        if "share_diff_B_minus_A" not in summary.columns or summary.empty:
+            continue
+        largest_gap = summary.assign(abs_share_diff=summary["share_diff_B_minus_A"].abs()).sort_values(
+            "abs_share_diff",
+            ascending=False,
+        ).iloc[0]
+        rows.append(
+            {
+                "dimension": column,
+                "largest_category_gap": largest_gap[column],
+                "share_A": largest_gap["A"],
+                "share_B": largest_gap["B"],
+                "share_diff_B_minus_A": largest_gap["share_diff_B_minus_A"],
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def add_segments(dataframe):
@@ -574,9 +687,13 @@ def business_insight_table(ab_data):
     outcomes = lead_outcome_summary(ab_data).set_index("group")
     numeric_balance = numeric_balance_summary(ab_data)
     largest_numeric_gap = (
-        numeric_balance.assign(abs_pct_diff=numeric_balance["pct_diff_vs_A"].abs())
-        .sort_values("abs_pct_diff", ascending=False)
+        numeric_balance.assign(abs_standardized_diff=numeric_balance["standardized_diff"].abs())
+        .sort_values("abs_standardized_diff", ascending=False)
         .iloc[0]
+    )
+    largest_numeric_gap_label = NUMERIC_BALANCE_AXIS_LABELS.get(
+        largest_numeric_gap["dimension"],
+        format_table_header(largest_numeric_gap["dimension"]),
     )
 
     return pd.DataFrame(
@@ -590,10 +707,10 @@ def business_insight_table(ab_data):
             ],
             "insight": [
                 f"B has a {pct(lift['B minus A lead-rate difference'])} higher share of ads with any lead than A ({pct(lift['Relative lift vs A'])} relative lift).",
-                "At a 5% significance level, the B-A lead-rate gap is statistically significant (p < 0.001). Approximate power for the observed effect is above 99.9%, meaning this sample size would be very likely to detect a true effect of this size.",
+                "At a 5% significance level, the B-A lead-rate gap is statistically significant (p < 0.001).",
                 f"B also has higher average total leads per ad ({outcomes.loc['B', 'avg_total_leads']:.3f} vs {outcomes.loc['A', 'avg_total_leads']:.3f}).",
-                f"The largest average numeric balance gap is {largest_numeric_gap['dimension']} ({pct(largest_numeric_gap['pct_diff_vs_A'])} B vs A).",
-                "Treatment group B is directionally positive. I would frame it as causal only if the assignment setup is validated.",
+                f"The largest standardized numeric balance gap is {largest_numeric_gap_label} ({largest_numeric_gap['standardized_diff']:.2f} standardized difference, B vs A).",
+                "Group B is directionally positive. I would frame it as causal only if we confirm which group received the feature and validate the assignment setup.",
             ],
         }
     )
@@ -655,7 +772,6 @@ def lift_summary_table(ab_data):
     ci_upper = lift["Approx. 95% CI upper for difference"]
     relative_lift = lift["Relative lift vs A"]
     p_value = inference["Two-sided p-value"]
-    power = inference["Approx. power for observed effect"]
     significance_level = inference["Significance level"]
 
     return pd.DataFrame(
@@ -666,7 +782,6 @@ def lift_summary_table(ab_data):
                 "Relative lift vs A",
                 "p-value",
                 "Significance level",
-                "Approx. power for observed effect",
             ],
             "Value": [
                 f"{absolute_lift * 100:.1f} pp",
@@ -674,7 +789,6 @@ def lift_summary_table(ab_data):
                 f"{relative_lift:.1%}",
                 "<0.001" if p_value < 0.001 else f"{p_value:.3f}",
                 f"{significance_level:.0%}",
-                ">99.9%" if power > 0.999 else f"{power:.1%}",
             ],
         }
     )
@@ -797,6 +911,8 @@ def simplify_fully_labeled_bar_axis(ax, axis="vertical"):
     else:
         ax.set_xlabel(None)
         ax.set_xticks([])
+        ax.tick_params(axis="y", length=0)
+        ax.spines["left"].set_visible(False)
         ax.spines["bottom"].set_visible(False)
 
 
@@ -865,15 +981,28 @@ def plot_group_sizes(dataframe):
     """Plot row counts by assignment status."""
     group_sizes = group_size_summary(dataframe).copy()
     fig, ax = plt.subplots(figsize=(6, 4))
-    plot_labeled_vertical_bars(
-        ax,
-        group_sizes["group"],
-        group_sizes["rows"],
-        "Rows by experiment assignment",
-        ylabel="Records",
-        colors=group_colors(group_sizes["group"]),
-        decimals=0,
-    )
+    ax.bar(group_sizes["group"], group_sizes["rows"], color=group_colors(group_sizes["group"]))
+    finish_plot(ax, "Rows by experiment assignment", xlabel=None, ylabel="Records")
+    max_rows = group_sizes["rows"].max()
+
+    for patch, (_, row) in zip(ax.patches, group_sizes.iterrows()):
+        is_tall_bar = row["rows"] > max_rows * 0.5
+        y = patch.get_height() * 0.96 if is_tall_bar else patch.get_height()
+        va = "top" if is_tall_bar else "bottom"
+        offset = -4 if is_tall_bar else 4
+        label_color = "white" if is_tall_bar else None
+        ax.annotate(
+            f"{row['rows']:,.0f}\n{row['share']:.1%}",
+            (patch.get_x() + patch.get_width() / 2, y),
+            ha="center",
+            va=va,
+            xytext=(0, offset),
+            textcoords="offset points",
+            fontsize=9,
+            color=label_color,
+        )
+
+    simplify_fully_labeled_bar_axis(ax)
     ax.set_xlabel("Group")
     return fig, ax
 
@@ -882,10 +1011,13 @@ def plot_numeric_balance(dataframe):
     """Plot percent differences in numeric dimensions between B and A."""
     numeric_balance = numeric_balance_summary(dataframe).dropna(subset=["pct_diff_vs_A"]).copy()
     numeric_balance = numeric_balance.sort_values("pct_diff_vs_A")
+    y_labels = numeric_balance["dimension"].map(
+        lambda dimension: NUMERIC_BALANCE_AXIS_LABELS.get(dimension, format_table_header(dimension))
+    )
     fig, ax = plt.subplots(figsize=(8, 5))
     plot_labeled_horizontal_bars(
         ax,
-        numeric_balance["dimension"],
+        y_labels,
         numeric_balance["pct_diff_vs_A"],
         "How B differs from A",
         xlabel="Percent difference",
@@ -1100,7 +1232,10 @@ DISPLAY_HEADER_ALIASES = {
     "diff_b_minus_a": "Diff B-A",
     "emissie": "Emissions",
     "energielabel": "Energy Label",
+    "excluding_missing_metric_rows": "Excl Missing Metric Rows",
     "excluding_duplicate_id_rows": "Excl Dup IDs",
+    "expected_a_share": "Expected A Share",
+    "largest_category_gap": "Largest Category Gap",
     "lead_rate_diff_b_minus_a": "Abs Lift",
     "group": "Test Group",
     "car_age_band": "Car Age Band",
@@ -1122,32 +1257,41 @@ DISPLAY_HEADER_ALIASES = {
     "rows_dropped": "Rows Dropped",
     "rows_used": "Rows Used",
     "share": "Row Share",
+    "share_a": "Share A",
+    "share_b": "Share B",
     "share_diff_b_minus_a": "Share Diff",
     "share_of_raw_rows": "Row Share",
     "small_segment_flag": "Small Segment",
     "source_column": "Source Column",
     "src_ad_id": "Ad ID",
+    "standardized_diff": "Std Diff",
     "telclicks": "Tel Clicks",
     "unique_values": "Unique",
     "vermogen": "Power",
     "webclicks": "Web Clicks",
+    "missing_as_zero": "Missing as Zero",
     "with_duplicate_id_rows": "With Dup IDs",
 }
 DISPLAY_VALUE_ALIASES = {
     "A lead rate": "A Lead Rate",
     "any_lead": "Any Lead",
+    "A rows": "A Rows",
+    "A share of assigned rows": "A Share of Assigned Rows",
     "A ads": "A Ads",
     "A ads with leads": "A Ads With Leads",
     "B lead rate": "B Lead Rate",
+    "B rows": "B Rows",
+    "B share of assigned rows": "B Share of Assigned Rows",
     "B ads": "B Ads",
     "B ads with leads": "B Ads With Leads",
     "B minus A lead-rate difference": "Abs Lead-Rate Lift",
+    "expected_A_share": "Expected A Share",
     "Significance level": "Significance Level",
+    "Sample-ratio p-value": "Sample-Ratio p-Value",
     "Approx. 95% CI lower for difference": "Approx 95% CI Lower",
     "Approx. 95% CI upper for difference": "Approx 95% CI Upper",
     "z statistic": "z Statistic",
     "Two-sided p-value": "Two-Sided p-Value",
-    "Approx. power for observed effect": "Approx Power for Observed Effect",
     "ad_start_dt": "Start Date",
     "avg_total_leads": "Avg Leads/Ad",
     "aantaldeuren": "Doors",
