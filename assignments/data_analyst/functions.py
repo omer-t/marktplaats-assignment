@@ -171,6 +171,21 @@ def prepare_ab_data(dataframe):
     return ab_data, excluded_data
 
 
+def prepare_insight_data(dataframe):
+    """Prepare all rows for descriptive q3 lead and segment analysis."""
+    insight_data = dataframe.copy()
+    metric_columns = existing_columns(insight_data, METRIC_COLUMNS)
+    insight_data[metric_columns] = insight_data[metric_columns].fillna(0)
+    insight_data["has_any_lead"] = insight_data[metric_columns].gt(0).any(axis=1)
+    insight_data["total_leads"] = insight_data[metric_columns].sum(axis=1)
+
+    if "bouwjaar" in insight_data.columns:
+        reference_year = int(insight_data["bouwjaar"].max())
+        insight_data["car_age"] = reference_year - insight_data["bouwjaar"]
+
+    return add_listing_lifecycle_fields(add_segments(insight_data))
+
+
 # ---------------------------------------------------------------------------
 # Data quality summaries
 # ---------------------------------------------------------------------------
@@ -681,6 +696,252 @@ def top_category_segment_summary(dataframe, column, top_n=8, min_ads_per_group=2
     return segment_outcome_summary(filtered, column, min_ads_per_group=min_ads_per_group)
 
 
+def q3_row_summary(raw_data, ab_data, excluded_data):
+    """Summarize row counts used by q3 and carried over from q2."""
+    return pd.DataFrame(
+        {
+            "metric": [
+                "Rows available for q3 insights",
+                "Rows assigned to A/B groups in q2",
+                "Rows not assigned to an A/B group",
+            ],
+            "rows": [len(raw_data), len(ab_data), len(excluded_data)],
+            "share_of_raw_rows": [1.0, len(ab_data) / len(raw_data), len(excluded_data) / len(raw_data)],
+        }
+    )
+
+
+def lead_channel_mix(dataframe):
+    """Summarize event frequency and event share for each lead channel."""
+    metric_columns = existing_columns(dataframe, METRIC_COLUMNS)
+    total_lead_events = dataframe[metric_columns].sum().sum()
+    rows = []
+
+    for column in metric_columns:
+        rows.append(
+            {
+                "channel": DISPLAY_VALUE_ALIASES.get(column, column),
+                "rows_with_event": int(dataframe[column].gt(0).sum()),
+                "share_of_ads_with_event": dataframe[column].gt(0).mean(),
+                "average_events_per_ad": dataframe[column].mean(),
+                "share_of_all_lead_events": dataframe[column].sum() / total_lead_events,
+            }
+        )
+
+    return pd.DataFrame(rows).sort_values("share_of_all_lead_events", ascending=False)
+
+
+def lead_channel_mix_by_segment(dataframe, segment_column):
+    """Return lead-channel event share within each segment value."""
+    metric_columns = existing_columns(dataframe, METRIC_COLUMNS)
+    channel_events = (
+        dataframe.dropna(subset=[segment_column])
+        .groupby(segment_column, observed=True)[metric_columns]
+        .sum()
+    )
+    channel_share = channel_events.div(channel_events.sum(axis=1), axis=0)
+    return channel_share.rename(columns=DISPLAY_VALUE_ALIASES)
+
+
+def lead_concentration_summary(dataframe):
+    """Return headline figures for skew and concentration of lead volume."""
+    top_decile_cutoff = dataframe["total_leads"].quantile(0.90)
+    top_decile = dataframe.loc[dataframe["total_leads"] >= top_decile_cutoff]
+
+    return pd.DataFrame(
+        {
+            "metric": [
+                "Ads with at least one lead",
+                "Median total leads",
+                "P90 total leads",
+                "P99 total leads",
+                "Lead events from top-decile ads",
+            ],
+            "value": [
+                dataframe["has_any_lead"].mean(),
+                dataframe["total_leads"].median(),
+                dataframe["total_leads"].quantile(0.90),
+                dataframe["total_leads"].quantile(0.99),
+                top_decile["total_leads"].sum() / dataframe["total_leads"].sum(),
+            ],
+        }
+    )
+
+
+def lead_concentration_curve(dataframe, cutoffs=(0.01, 0.05, 0.10, 0.20)):
+    """Prepare ranked cumulative lead-share data plus selected cutoff points."""
+    ranked = dataframe.sort_values("total_leads", ascending=False).reset_index(drop=True)
+    ranked["ad_share"] = (ranked.index + 1) / len(ranked)
+    ranked["lead_share"] = ranked["total_leads"].cumsum() / ranked["total_leads"].sum()
+
+    cutoff_rows = []
+    for ad_share in cutoffs:
+        row_count = int(len(ranked) * ad_share)
+        cutoff_rows.append(
+            {
+                "top_ad_share": ad_share,
+                "ads": row_count,
+                "lead_event_share": ranked.loc[: row_count - 1, "total_leads"].sum()
+                / ranked["total_leads"].sum(),
+            }
+        )
+
+    return ranked, pd.DataFrame(cutoff_rows)
+
+
+def listing_quality_summary(dataframe):
+    """Summarize lead outcomes by photo-count band."""
+    summary = (
+        dataframe.dropna(subset=["photo_count_band"])
+        .groupby("photo_count_band", observed=True)
+        .agg(
+            ads=("src_ad_id", "count"),
+            lead_rate=("has_any_lead", "mean"),
+            avg_total_leads=("total_leads", "mean"),
+            median_days_live=("days_live", "median"),
+            median_price=("price", "median"),
+        )
+        .reset_index()
+    )
+    summary["share_of_ads"] = summary["ads"] / len(dataframe)
+    return summary
+
+
+def segment_insight_summary(dataframe, segment_column, min_ads=500):
+    """Summarize descriptive lead outcomes for one q3 segment."""
+    summary = (
+        dataframe.dropna(subset=[segment_column])
+        .groupby(segment_column, observed=True)
+        .agg(
+            ads=("src_ad_id", "count"),
+            lead_rate=("has_any_lead", "mean"),
+            avg_total_leads=("total_leads", "mean"),
+            median_price=("price", "median"),
+            median_photos=("photo_cnt", "median"),
+        )
+        .reset_index()
+    )
+    summary = summary.loc[summary["ads"] >= min_ads].copy()
+    summary["share_of_ads"] = summary["ads"] / len(dataframe)
+    return summary.sort_values("lead_rate", ascending=False)
+
+
+def time_scope_summary(dataframe):
+    """Summarize date coverage and listing tenure in the q3 data."""
+    return pd.DataFrame(
+        {
+            "metric": [
+                "Earliest ad start",
+                "Latest ad start",
+                "Days live median",
+                "Days live p90",
+                "Days live max",
+            ],
+            "value": [
+                dataframe["ad_start_dt"].min(),
+                dataframe["ad_start_dt"].max(),
+                dataframe["days_live"].median(),
+                dataframe["days_live"].quantile(0.90),
+                dataframe["days_live"].max(),
+            ],
+        }
+    )
+
+
+def add_listing_lifecycle_fields(dataframe):
+    """Add q3 lifecycle and weekday fields used in time-based summaries."""
+    lifecycle_data = dataframe.copy()
+    lifecycle_data["days_live_band"] = pd.cut(
+        lifecycle_data["days_live"],
+        bins=[-1, 3, 7, 14, 31, float("inf")],
+        labels=["0-3", "4-7", "8-14", "15-31", "31+"],
+    )
+    lifecycle_data["listing_lifecycle_stage"] = pd.cut(
+        lifecycle_data["days_live"],
+        bins=[-1, 7, 31, float("inf")],
+        labels=["Fresh: 0-7 days", "Mid-life: 8-31 days", "Stale: 31+ days"],
+    )
+    lifecycle_data["start_weekday"] = lifecycle_data["ad_start_dt"].dt.day_name()
+    return lifecycle_data
+
+
+def lifecycle_summary(dataframe):
+    """Summarize lead outcomes by days-live band."""
+    summary = (
+        dataframe.dropna(subset=["days_live_band"])
+        .groupby("days_live_band", observed=True)
+        .agg(
+            ads=("src_ad_id", "count"),
+            lead_rate=("has_any_lead", "mean"),
+            avg_total_leads=("total_leads", "mean"),
+            median_total_leads=("total_leads", "median"),
+            median_price=("price", "median"),
+            median_photos=("photo_cnt", "median"),
+        )
+        .reset_index()
+    )
+    summary["share_of_ads"] = summary["ads"] / len(dataframe)
+    return summary
+
+
+def weekday_summary(dataframe):
+    """Summarize lead outcomes by ad start weekday."""
+    weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    summary = (
+        dataframe.groupby("start_weekday")
+        .agg(
+            ads=("src_ad_id", "count"),
+            lead_rate=("has_any_lead", "mean"),
+            avg_total_leads=("total_leads", "mean"),
+            median_days_live=("days_live", "median"),
+            median_price=("price", "median"),
+        )
+        .reindex(weekday_order)
+        .reset_index()
+    )
+    summary["share_of_ads"] = summary["ads"] / len(dataframe)
+    return summary
+
+
+def fresh_stale_summary(dataframe):
+    """Summarize lead outcomes by broad listing lifecycle stage."""
+    summary = (
+        dataframe.groupby("listing_lifecycle_stage", observed=True)
+        .agg(
+            ads=("src_ad_id", "count"),
+            lead_rate=("has_any_lead", "mean"),
+            avg_total_leads=("total_leads", "mean"),
+            median_total_leads=("total_leads", "median"),
+            median_price=("price", "median"),
+            median_photos=("photo_cnt", "median"),
+            median_mileage=("kmstand", "median"),
+        )
+        .reset_index()
+    )
+    summary["share_of_ads"] = summary["ads"] / len(dataframe)
+    return summary
+
+
+def lead_profile_summary(dataframe, numeric_fields=None):
+    """Compare median ad characteristics for ads with and without leads."""
+    if numeric_fields is None:
+        numeric_fields = ["price", "kmstand", "car_age", "photo_cnt", "days_live", "vermogen"]
+
+    lead_profile = (
+        dataframe.groupby("has_any_lead")[numeric_fields]
+        .median()
+        .T
+        .rename(columns={False: "no_lead_median", True: "lead_median"})
+        .reset_index()
+        .rename(columns={"index": "dimension"})
+    )
+    lead_profile["difference_lead_minus_no_lead"] = lead_profile["lead_median"] - lead_profile["no_lead_median"]
+    lead_profile["pct_difference_vs_no_lead"] = (
+        lead_profile["difference_lead_minus_no_lead"] / lead_profile["no_lead_median"]
+    )
+    return lead_profile
+
+
 def business_insight_table(ab_data):
     """Create a compact, text-friendly business insight table."""
     lift = lead_rate_lift(ab_data).set_index("metric")["value"]
@@ -977,6 +1238,28 @@ def plot_lead_channel_coverage(dataframe):
     return fig, ax
 
 
+def plot_lead_channel_mix_by_segment(channel_share, title):
+    """Plot stacked lead-channel share by segment."""
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    bottom = 0
+    colors = [PLOT_COLORS["A"], PLOT_COLORS["B"], PLOT_COLORS["diff"], PLOT_COLORS["neutral"]]
+
+    for color, channel in zip(colors, channel_share.columns):
+        ax.bar(
+            channel_share.index.astype(str),
+            channel_share[channel],
+            bottom=bottom,
+            label=channel,
+            color=color,
+        )
+        bottom = bottom + channel_share[channel]
+
+    finish_plot(ax, title, xlabel=None, ylabel="Share of lead events", percent_y=True)
+    ax.legend(title=None, frameon=False, bbox_to_anchor=(1.02, 1), loc="upper left")
+    plt.tight_layout()
+    return fig, ax
+
+
 def plot_group_sizes(dataframe):
     """Plot row counts by assignment status."""
     group_sizes = group_size_summary(dataframe).copy()
@@ -1078,6 +1361,103 @@ def plot_total_leads_distribution(dataframe):
     )
     ax.text(0.98, 0.82, f"Mean: {lead_data.mean():.2f}", transform=ax.transAxes, ha="right", fontsize=10)
     plt.tight_layout()
+    return fig, ax
+
+
+def plot_cumulative_lead_share(ranked_leads, cutoff_summary, highlighted_ad_share=0.10):
+    """Plot cumulative lead events by ads ranked from highest to lowest lead count."""
+    fig, ax = plt.subplots(figsize=(7.5, 4.5))
+    ax.plot(ranked_leads["ad_share"], ranked_leads["lead_share"], color=PLOT_COLORS["A"], linewidth=2.5)
+    ax.plot([0, 1], [0, 1], color="#B8B8B8", linestyle="--", linewidth=1)
+    finish_plot(
+        ax,
+        "Cumulative lead events by ranked ads",
+        xlabel="Share of ads",
+        ylabel="Share of lead events",
+        percent_x=True,
+        percent_y=True,
+    )
+
+    highlight = cutoff_summary.loc[cutoff_summary["top_ad_share"].eq(highlighted_ad_share)]
+    if not highlight.empty:
+        lead_share = highlight["lead_event_share"].iloc[0]
+        rank_index = int(len(ranked_leads) * highlighted_ad_share) - 1
+        ax.annotate(
+            f"Top {highlighted_ad_share:.0%} of ads: {lead_share:.1%} of leads",
+            xy=(highlighted_ad_share, ranked_leads.loc[rank_index, "lead_share"]),
+            xytext=(0.22, 0.58),
+            arrowprops={"arrowstyle": "->", "color": "#333333", "linewidth": 1},
+            fontsize=10,
+        )
+
+    plt.tight_layout()
+    return fig, ax
+
+
+def plot_photo_count_lead_rate(listing_quality):
+    """Plot lead rate by photo-count band."""
+    fig, ax = plt.subplots(figsize=(7, 4))
+    plot_labeled_vertical_bars(
+        ax,
+        listing_quality["photo_count_band"].astype(str),
+        listing_quality["lead_rate"],
+        "Lead rate by photo count",
+        ylabel="Lead rate",
+        colors=PLOT_COLORS["A"],
+        percent_y=True,
+        percent_labels=True,
+    )
+    return fig, ax
+
+
+def plot_lifecycle_lead_rate(lifecycle):
+    """Plot lead rate by days-live band."""
+    fig, ax = plt.subplots(figsize=(8, 4))
+    plot_labeled_vertical_bars(
+        ax,
+        lifecycle["days_live_band"].astype(str),
+        lifecycle["lead_rate"],
+        "Lead rate by days live band",
+        ylabel="Lead rate",
+        colors=PLOT_COLORS["A"],
+        percent_y=True,
+        percent_labels=True,
+    )
+    return fig, ax
+
+
+def plot_weekday_lead_rate(weekday):
+    """Plot lead rate by ad start weekday."""
+    fig, ax = plt.subplots(figsize=(8, 4))
+    plot_labeled_vertical_bars(
+        ax,
+        weekday["start_weekday"],
+        weekday["lead_rate"],
+        "Lead rate by ad start weekday",
+        ylabel="Lead rate",
+        colors=PLOT_COLORS["B"],
+        percent_y=True,
+        percent_labels=True,
+    )
+    ax.tick_params(axis="x", rotation=30)
+    return fig, ax
+
+
+def plot_lead_profile_differences(lead_profile):
+    """Plot median characteristic differences for ads with leads vs no leads."""
+    plot_profile = lead_profile.dropna(subset=["pct_difference_vs_no_lead"]).sort_values("pct_difference_vs_no_lead")
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    plot_labeled_horizontal_bars(
+        ax,
+        plot_profile["dimension"].map(DISPLAY_VALUE_ALIASES).fillna(plot_profile["dimension"]),
+        plot_profile["pct_difference_vs_no_lead"],
+        "Median difference for ads with leads vs no leads",
+        xlabel="Percent difference",
+        colors=signed_difference_colors(plot_profile["pct_difference_vs_no_lead"]),
+        percent_x=True,
+        percent_labels=True,
+        zero_line=True,
+    )
     return fig, ax
 
 
@@ -1230,6 +1610,7 @@ DISPLAY_HEADER_ALIASES = {
     "bouwjaar": "Build Year",
     "carrosserie": "Body Type",
     "diff_b_minus_a": "Diff B-A",
+    "difference_lead_minus_no_lead": "Lead vs No-Lead Difference",
     "emissie": "Emissions",
     "energielabel": "Energy Label",
     "excluding_missing_metric_rows": "Excl Missing Metric Rows",
@@ -1240,16 +1621,23 @@ DISPLAY_HEADER_ALIASES = {
     "group": "Test Group",
     "car_age_band": "Car Age Band",
     "km_band": "Mileage Band",
+    "listing_lifecycle_stage": "Lifecycle Stage",
     "lead_rate": "Lead Rate",
     "lead_rate_a": "Lead Rate A",
     "lead_rate_b": "Lead Rate B",
+    "lead_median": "Lead Median",
     "median_total_leads": "Median Leads/Ad",
+    "median_days_live": "Median Days Live",
+    "median_mileage": "Median Mileage",
+    "median_photos": "Median Photos",
+    "median_price": "Median Price",
     "missing_pct": "Missing %",
     "missing_source_rows": "Missing Source",
     "n_asq": "Questions",
     "out_of_band_rows": "Out of Band",
     "pct_rows_dropped": "% Rows Dropped",
     "pct_diff_vs_a": "% Diff",
+    "pct_difference_vs_no_lead": "% Difference vs No Lead",
     "photo_count_band": "Photo Count Band",
     "photo_cnt": "Photos",
     "price_band": "Price Band",
@@ -1260,16 +1648,24 @@ DISPLAY_HEADER_ALIASES = {
     "share_a": "Share A",
     "share_b": "Share B",
     "share_diff_b_minus_a": "Share Diff",
+    "share_of_ads": "Ad Share",
+    "share_of_ads_with_event": "Ads With Event Share",
+    "share_of_all_lead_events": "Lead Event Share",
     "share_of_raw_rows": "Row Share",
     "small_segment_flag": "Small Segment",
     "source_column": "Source Column",
     "src_ad_id": "Ad ID",
     "standardized_diff": "Std Diff",
+    "start_weekday": "Start Weekday",
     "telclicks": "Tel Clicks",
+    "total_leads": "Total Leads",
     "unique_values": "Unique",
     "vermogen": "Power",
     "webclicks": "Web Clicks",
+    "average_events_per_ad": "Avg Events/Ad",
     "missing_as_zero": "Missing as Zero",
+    "no_lead_median": "No-Lead Median",
+    "rows_with_event": "Rows With Event",
     "with_duplicate_id_rows": "With Dup IDs",
 }
 DISPLAY_VALUE_ALIASES = {
@@ -1279,6 +1675,7 @@ DISPLAY_VALUE_ALIASES = {
     "A share of assigned rows": "A Share of Assigned Rows",
     "A ads": "A Ads",
     "A ads with leads": "A Ads With Leads",
+    "Ads with at least one lead": "Ads With At Least One Lead",
     "B lead rate": "B Lead Rate",
     "B rows": "B Rows",
     "B share of assigned rows": "B Share of Assigned Rows",
@@ -1305,7 +1702,11 @@ DISPLAY_VALUE_ALIASES = {
     "columns": "Columns",
     "count": "Count",
     "days_live": "Days Live",
+    "Days live max": "Days Live Max",
+    "Days live median": "Days Live Median",
+    "Days live p90": "Days Live P90",
     "diff_b_minus_a": "Diff B-A",
+    "Earliest ad start": "Earliest Ad Start",
     "emissie": "Emissions",
     "energielabel": "Energy Label",
     "excluded_missing_group_rows": "Missing-Group Rows",
@@ -1314,8 +1715,11 @@ DISPLAY_VALUE_ALIASES = {
     "kmstand": "Mileage",
     "kleur": "Color",
     "l2": "L2",
+    "Latest ad start": "Latest Ad Start",
+    "Lead events from top-decile ads": "Lead Events From Top-Decile Ads",
     "max": "Max",
     "mean": "Mean",
+    "Median total leads": "Median Total Leads",
     "median_total_leads": "Median Leads/Ad",
     "min": "Min",
     "model": "Model",
@@ -1323,12 +1727,17 @@ DISPLAY_VALUE_ALIASES = {
     "pct_rows_dropped": "% Rows Dropped",
     "photo_count_band": "Photo Count Band",
     "photo_cnt": "Photos",
+    "P90 total leads": "P90 Total Leads",
+    "P99 total leads": "P99 Total Leads",
     "price": "Price",
     "price_band": "Price Band",
     "raw_rows": "Raw Rows",
     "Relative lift vs A": "Relative Lift vs A",
     "relative_lift_vs_a": "Relative Lift vs A",
     "rows": "Rows",
+    "Rows assigned to A/B groups in q2": "Rows Assigned to A/B Groups in q2",
+    "Rows available for q3 insights": "Rows Available for q3 Insights",
+    "Rows not assigned to an A/B group": "Rows Not Assigned to an A/B Group",
     "rows_dropped": "Rows Dropped",
     "rows_with_duplicated_ad_id": "Rows With Duplicated Ad ID",
     "std": "Std",
