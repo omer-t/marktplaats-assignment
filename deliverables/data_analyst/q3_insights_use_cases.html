@@ -8108,10 +8108,10 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="2.1-Vehicle-Segment-Benchmarks">2.1 Vehicle Segment Benchmarks<a class="anchor-link" href="#2.1-Vehicle-Segment-Benchmarks">¶</a></h3><ul>
-<li>Goal: benchmark each listing against similar vehicles, not the full marketplace.</li>
-<li>Why it matters: buyer interest differs strongly by price, age, mileage, body type, and brand.</li>
+<li>Goal: identify listings that underperform similar vehicles and recommend the right seller action.</li>
+<li>Why it matters: marketplace averages can make healthy listings look weak, or weak listings look normal, if segment differences are ignored.</li>
 <li>Required join: seller/account data to turn listing-level benchmarks into seller actions.</li>
-<li>Helpful joins: final sale outcome and listing edit history.</li>
+<li>Helpful joins: final sale outcome to validate business impact, and listing edit history to measure whether seller changes improve performance.</li>
 </ul>
 </div>
 </div>
@@ -8123,7 +8123,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="2.1.1-Vehicle-Demand-Patterns">2.1.1 Vehicle Demand Patterns<a class="anchor-link" href="#2.1.1-Vehicle-Demand-Patterns">¶</a></h4><ul>
+<h4 id="Vehicle-Demand-Patterns">Vehicle Demand Patterns<a class="anchor-link" href="#Vehicle-Demand-Patterns">¶</a></h4><ul>
 <li>Lower-price, older, and higher-mileage cars show higher lead rates in this dataset.</li>
 <li>These segment patterns make seller recommendations more defensible.</li>
 <li>Practical use: flag listings that underperform similar cars, then suggest a price check, content refresh, or promotion.</li>
@@ -8785,7 +8785,7 @@ a.anchor-link {
 <li>Goal: help sellers improve listing content that may be limiting buyer interest.</li>
 <li>Why it matters: listing advice should focus on fields sellers can actually change.</li>
 <li>Required join: seller/account data to connect recommendations to actual sellers.</li>
-<li>Helpful joins: final sale outcome and listing edit history.</li>
+<li>Helpful joins: final sale outcome to check whether better content helps sales, and listing edit history to measure whether content changes improve lead performance.</li>
 </ul>
 </div>
 </div>
@@ -8797,7 +8797,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="2.2.1-Photo-Count-Signals">2.2.1 Photo Count Signals<a class="anchor-link" href="#2.2.1-Photo-Count-Signals">¶</a></h4><ul>
+<h4 id="Photo-Count-Signals">Photo Count Signals<a class="anchor-link" href="#Photo-Count-Signals">¶</a></h4><ul>
 <li>Photo count alone is not a simple quality score.</li>
 <li>High-photo listings tend to be more expensive, which also affects lead rate.</li>
 <li>Use photo count as a benchmark within similar vehicle and price segments.</li>
@@ -8923,7 +8923,7 @@ a.anchor-link {
 <li>Goal: nudge sellers at the right moment, before a listing becomes stale.</li>
 <li>Why it matters: listing age changes how we should read lead performance.</li>
 <li>Required join: seller/account data to deliver nudges to the right sellers.</li>
-<li>Helpful joins: listing edit history, paid exposure history, and final sale outcome.</li>
+<li>Helpful joins: listing edit history to detect seller changes, paid exposure history to separate organic from promoted performance, and final sale outcome to validate business impact.</li>
 </ul>
 </div>
 </div>
@@ -8935,7 +8935,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h4 id="2.3.1-Listing-Lifecycle-Signals">2.3.1 Listing Lifecycle Signals<a class="anchor-link" href="#2.3.1-Listing-Lifecycle-Signals">¶</a></h4><ul>
+<h4 id="Listing-Lifecycle-Signals">Listing Lifecycle Signals<a class="anchor-link" href="#Listing-Lifecycle-Signals">¶</a></h4><ul>
 <li>Fresh listings can be checked for early traction.</li>
 <li>Mid-life listings can be compared against segment benchmarks.</li>
 <li>Stale listings with weak lead performance may need a refresh, price check, or promotion.</li>
