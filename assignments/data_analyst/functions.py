@@ -17,6 +17,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "marketp
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
 
 
@@ -826,6 +827,39 @@ def segment_insight_summary(dataframe, segment_column, min_ads=500):
     return summary.sort_values("lead_rate", ascending=False)
 
 
+def segment_benchmark_summary(dataframe, segment_column, min_ads=500):
+    """Summarize one segment band with medians for the other benchmark dimensions."""
+    median_columns = {
+        "price_band": {
+            "median_car_age": ("car_age", "median"),
+            "median_mileage": ("kmstand", "median"),
+        },
+        "km_band": {
+            "median_price": ("price", "median"),
+            "median_car_age": ("car_age", "median"),
+        },
+        "car_age_band": {
+            "median_price": ("price", "median"),
+            "median_mileage": ("kmstand", "median"),
+        },
+    }
+    aggregations = {
+        "ads": ("src_ad_id", "count"),
+        "lead_rate": ("has_any_lead", "mean"),
+        "avg_total_leads": ("total_leads", "mean"),
+        **median_columns.get(segment_column, {}),
+    }
+    summary = (
+        dataframe.dropna(subset=[segment_column])
+        .groupby(segment_column, observed=True)
+        .agg(**aggregations)
+        .reset_index()
+    )
+    summary = summary.loc[summary["ads"] >= min_ads].copy()
+    summary["share_of_ads"] = summary["ads"] / len(dataframe)
+    return summary.sort_values("lead_rate", ascending=False)
+
+
 def time_scope_summary(dataframe):
     """Summarize date coverage and listing tenure in the q3 data."""
     return pd.DataFrame(
@@ -1359,7 +1393,7 @@ def plot_total_leads_distribution(dataframe):
         xlabel="Total leads per ad (clipped at p99)",
         ylabel="Density",
     )
-    ax.text(0.98, 0.82, f"Mean: {lead_data.mean():.2f}", transform=ax.transAxes, ha="right", fontsize=10)
+    ax.text(0.98, 0.82, f"Clipped mean: {lead_data.mean():.2f}", transform=ax.transAxes, ha="right", fontsize=10)
     plt.tight_layout()
     return fig, ax
 
@@ -1620,6 +1654,7 @@ DISPLAY_HEADER_ALIASES = {
     "lead_rate_diff_b_minus_a": "Abs Lift",
     "group": "Test Group",
     "car_age_band": "Car Age Band",
+    "channel": "Lead Type",
     "km_band": "Mileage Band",
     "listing_lifecycle_stage": "Lifecycle Stage",
     "lead_rate": "Lead Rate",
@@ -1627,6 +1662,7 @@ DISPLAY_HEADER_ALIASES = {
     "lead_rate_b": "Lead Rate B",
     "lead_median": "Lead Median",
     "median_total_leads": "Median Leads/Ad",
+    "median_car_age": "Median Car Age",
     "median_days_live": "Median Days Live",
     "median_mileage": "Median Mileage",
     "median_photos": "Median Photos",
@@ -1786,6 +1822,18 @@ def format_table_value(value, column, row=None):
             )
         # Row context lets metric/value tables format p-values, power, and
         # year-like fields correctly even when the column name is generic.
+        if column_name in {"share_of_ads", "ad share"}:
+            return f"{value:.1%}"
+
+        if column_name in {"lead_rate", "lead rate", "lead_rate_a", "lead rate a", "lead_rate_b", "lead rate b"}:
+            return f"{value:.1%}"
+
+        if column_name in {"median_price", "median price"}:
+            return f"€{value:,.0f}"
+
+        if column_name in {"median_car_age", "median car age", "median_mileage", "median mileage"}:
+            return f"{value:,.0f}"
+
         uses_decimal_format = any(keyword in column_name for keyword in DECIMAL_FORMAT_COLUMN_KEYWORDS)
         uses_thousands_separator = not any(
             keyword in f"{column_name} {row_context}" for keyword in NO_THOUSANDS_SEPARATOR_COLUMN_KEYWORDS
@@ -1825,6 +1873,28 @@ def format_table_for_display(table, max_rows=None):
 def style_table(table, max_rows=None):
     """Return a styled dataframe for display in notebooks."""
     return format_table_for_display(table, max_rows=max_rows).style
+
+
+def style_segment_insight_table(table, max_rows=None):
+    """Style q3 segment tables with separate heat maps for lead-rate columns."""
+    visible_table = table.head(max_rows) if max_rows is not None else table
+    display_table = visible_table.copy().rename(columns=format_table_header)
+    lead_rate_column = format_table_header("lead_rate")
+    avg_leads_column = format_table_header("avg_total_leads")
+    heatmap_cmap = LinearSegmentedColormap.from_list("segment_yellow_green", ["#F4D35E", "#2E7D32"])
+
+    formatters = {
+        column: (lambda value, column=column: format_table_value(value, column))
+        for column in display_table.columns
+    }
+    styled_table = display_table.style.format(formatters)
+
+    if lead_rate_column in display_table.columns:
+        styled_table = styled_table.background_gradient(cmap=heatmap_cmap, subset=[lead_rate_column])
+    if avg_leads_column in display_table.columns:
+        styled_table = styled_table.background_gradient(cmap=heatmap_cmap, subset=[avg_leads_column])
+
+    return styled_table
 
 
 def print_table(title, table, max_rows=30):
