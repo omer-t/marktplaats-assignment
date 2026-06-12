@@ -3,10 +3,10 @@
 .venv/
 data/
 assignments/*/data/
-!assignments/marketing_analyst/data/
-assignments/marketing_analyst/data/*
+!assignments/*/data/
+assignments/*/data/*
+!assignments/*/data/*.csv
 !assignments/marketing_analyst/data/question_1_schemas.md
-!assignments/marketing_analyst/data/question_3_bundle_registrations.csv
 outputs/
 __pycache__/
 *.py[cod]
