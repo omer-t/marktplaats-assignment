@@ -1,12 +1,7 @@
 .DS_Store
 .idea/
 .venv/
-data/
-assignments/*/data/
-!assignments/*/data/
-assignments/*/data/*
-!assignments/*/data/*.csv
-!assignments/marketing_analyst/data/question_1_schemas.md
+**/data/*.xlsx
 outputs/
 __pycache__/
 *.py[cod]
