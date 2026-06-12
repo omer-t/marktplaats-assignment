@@ -1,7 +1,9 @@
+-- Interpretation
+-- I count ads that were posted in May 2017, and check whether each ad received at least one lead within 24 hours after it was posted.
+
 -- Assumptions
 -- 1. Snowflake SQL syntax.
--- 2. Counting ads that *started* in May 2017 and received at least one lead within 24 hours after the ad was posted.
--- 3. Multiple lead events for the same ad count as one ad with leads.
+-- 2. Multiple lead events for the same ad count as one ad with leads.
 
 with ads as (
     select
