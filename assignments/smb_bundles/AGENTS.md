@@ -1,8 +1,8 @@
-# Marketing Analyst Assignment
+# SMB Bundles Assignment
 
 ## Assignment Goal
 
-Complete the Business & Strategy Analytics marketing analyst case in presentation form.
+Complete the SMB Bundle Strategy case in presentation form.
 
 The final work should be based on analysis in the four question-specific notebooks. Keep the notebooks easy to copy into Google Slides:
 
@@ -17,26 +17,26 @@ The final work should be based on analysis in the four question-specific noteboo
 
 Assignment folder:
 
-- `assignments/marketing_analyst/q1_identify_smb_sellers.ipynb`
+- `assignments/smb_bundles/q1_identify.ipynb`
   - Notebook for Question 1.
   - Use this for SMB seller identification logic based on the available schemas and assignment context.
-- `assignments/marketing_analyst/q2_outreach_prioritization.ipynb`
+- `assignments/smb_bundles/q2_prioritize.ipynb`
   - Notebook for Question 2.
-  - Use this for outreach prioritization analysis using `data/question_2_outreach_prioritization.csv`.
-- `assignments/marketing_analyst/q3_sales_dashboard.ipynb`
+  - Use this for outreach prioritization analysis using `data/q2_prioritize.csv`.
+- `assignments/smb_bundles/q3_monitor.ipynb`
   - Notebook for Question 3.
-  - Use this for bundle monitoring, dashboard metrics, and sales impact analysis using `data/question_3_bundle_registrations.csv`.
-- `assignments/marketing_analyst/q4_marketing_campaign.ipynb`
+  - Use this for bundle monitoring, dashboard metrics, and sales impact analysis using `data/q3_monitor.csv`.
+- `assignments/smb_bundles/q4_scale.ipynb`
   - Notebook for Question 4.
   - Use this for the conceptual marketing campaign proposal based on Q1-Q3 findings and relevant platform context.
-- `assignments/marketing_analyst/functions.py`
-  - Shared helper functions for all marketing analyst notebooks.
+- `assignments/smb_bundles/functions.py`
+  - Shared helper functions for all SMB Bundles notebooks.
   - Use this for repeatable mechanics such as paths, data loading, metric creation, aggregation, formatting, and plotting setup.
-- `assignments/marketing_analyst/docs/Business Case for BA 2026 - Marketing Analyst.pdf`
+- `assignments/smb_bundles/docs/Business Case for BA 2026 - SMB Bundles.pdf`
   - Assignment brief and questions.
   - Contains all 4 assignment questions.
   - Read this first and use it as the source of truth for required outputs.
-- `assignments/marketing_analyst/data/Marktplaats2dehands Business Analytics SMB Dataset.xlsx`
+- `assignments/smb_bundles/data/Marktplaats2dehands Business Analytics SMB Dataset.xlsx`
   - Workbook with all provided datasets for this assignment.
   - Original source file. Do not alter this file.
   - Contains 3 sheets:
@@ -44,21 +44,21 @@ Assignment folder:
     - `Question 2`: dataset for Q2.
     - `Question 3`: dataset for Q3.
   - There is no dedicated dataset or schema for Q4.
-- `assignments/marketing_analyst/data/question_2_outreach_prioritization.csv`
+- `assignments/smb_bundles/data/q2_prioritize.csv`
   - CSV export of the `Question 2` sheet.
   - Use this as the main analysis input for Q2.
-- `assignments/marketing_analyst/data/question_3_bundle_registrations.csv`
+- `assignments/smb_bundles/data/q3_monitor.csv`
   - CSV export of the `Question 3` sheet.
   - Use this as the main analysis input for Q3.
 
 ## Assignment Questions
 
-The PDF contains all assignment questions and asks for a 25-minute presentation covering four questions:
+The PDF contains all assignment questions and asks for a 25-minute presentation covering four questions. Use this naming convention:
 
-1. How can we identify SMB sellers?
-2. Who should we prioritize in our outreach?
-3. How do we monitor the sales?
-4. Marketing campaign proposal.
+1. SMB Identification: Identify
+2. Outreach Prioritization: Prioritize
+3. Sales Dashboard: Monitor
+4. Marketing Campaign: Scale
 
 The expected audience is both analysts and business partners. Balance analytical rigor with clear business recommendations.
 
@@ -121,11 +121,11 @@ There is no separate dataset for Q4. Answer Q4 conceptually, using the business 
 
 CSV analysis copies:
 
-- `data/question_2_outreach_prioritization.csv`
+- `data/q2_prioritize.csv`
   - exported from workbook sheet `Question 2`
   - 129,501 data rows
   - 18 columns
-- `data/question_3_bundle_registrations.csv`
+- `data/q3_monitor.csv`
   - exported from workbook sheet `Question 3`
   - 8,830 data rows
   - 5 columns
@@ -136,10 +136,10 @@ Use the CSV files for notebook analysis where possible. Use the Excel file only 
 
 The assignment is split into four notebooks:
 
-- `q1_identify_smb_sellers.ipynb`
-- `q2_outreach_prioritization.ipynb`
-- `q3_sales_dashboard.ipynb`
-- `q4_marketing_campaign.ipynb`
+- `q1_identify.ipynb`
+- `q2_prioritize.ipynb`
+- `q3_monitor.ipynb`
+- `q4_scale.ipynb`
 
 Each notebook starts with:
 
@@ -290,7 +290,7 @@ Columns:
 - `N_URGENCY`
 - `FEE_URGENCY`
 
-Use `data/question_2_outreach_prioritization.csv` to recommend which sellers to call first from the 80k identified prospects, using the 5% sample.
+Use `data/q2_prioritize.csv` to recommend which sellers to call first from the 80k identified prospects, using the 5% sample.
 
 Useful analysis directions:
 
@@ -332,7 +332,7 @@ Notes from the PDF:
 - Do not refund previous bundle time when a seller switches.
 - `2099-12-31` appears to represent still-active subscriptions.
 
-Use `data/question_3_bundle_registrations.csv` to design and partially populate a sales monitoring dashboard.
+Use `data/q3_monitor.csv` to design and partially populate a sales monitoring dashboard.
 
 Useful dashboard metrics:
 
@@ -369,14 +369,14 @@ Recommended notebook structure:
    - Explain why each signal indicates business intent.
    - Mention risks and false positives.
 3. `Question 2 - Outreach prioritization`
-   - Load `data/question_2_outreach_prioritization.csv` through `functions.py`.
+   - Load `data/q2_prioritize.csv` through `functions.py`.
    - Clean column names if helpful.
    - Aggregate to seller level using shared helper functions where possible.
    - Build exploratory charts.
    - Create a simple prioritization score.
    - Recommend top seller segments and bundle offers.
 4. `Question 3 - Sales dashboard`
-   - Load `data/question_3_bundle_registrations.csv` through `functions.py`.
+   - Load `data/q3_monitor.csv` through `functions.py`.
    - Calculate launch and subscription metrics using shared helper functions where possible.
    - Draft dashboard sections and visual examples.
    - List missing data needed for a complete dashboard.

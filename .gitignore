@@ -1,6 +1,7 @@
 .DS_Store
 .idea/
 .venv/
+~$*
 **/data/*.xlsx
 outputs/
 __pycache__/

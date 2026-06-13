@@ -1,4 +1,4 @@
-"""Shared helpers for the marketing analyst notebooks.
+"""Shared helpers for the SMB Bundles notebooks.
 
 The notebooks should read like a presentation-ready analysis story. This
 module holds the repeatable mechanics: file paths, data loading, aggregation,
@@ -33,8 +33,8 @@ DATA_DIR = ASSIGNMENT_DIR / "data"
 DOCS_DIR = ASSIGNMENT_DIR / "docs"
 
 SOURCE_WORKBOOK_PATH = DATA_DIR / "Marktplaats2dehands Business Analytics SMB Dataset.xlsx"
-Q2_CSV_PATH = DATA_DIR / "question_2_outreach_prioritization.csv"
-Q3_CSV_PATH = DATA_DIR / "question_3_bundle_registrations.csv"
+Q2_CSV_PATH = DATA_DIR / "q2_prioritize.csv"
+Q3_CSV_PATH = DATA_DIR / "q3_monitor.csv"
 
 Q2_DATE_COLUMN = "FTR_MONTH"
 Q2_USER_COLUMN = "USER_ID"
@@ -73,11 +73,23 @@ FREE_TRIAL_DAYS = 28
 ACTIVE_SUBSCRIPTION_END_DATE = pd.Timestamp("2099-12-31")
 
 PLOT_COLORS = {
-    "primary": "#4C78A8",
-    "secondary": "#F58518",
-    "success": "#54A24B",
-    "warning": "#ECA82C",
-    "neutral": "#8A8F98",
+    "background": "#111418",
+    "panel": "#171B21",
+    "grid": "#303640",
+    "text": "#E8EAED",
+    "muted_text": "#AAB2BF",
+    "q1": "#F4C430",
+    "q2": "#4FB3FF",
+    "q3": "#3DDC97",
+    "q4": "#FF7A59",
+    "primary": "#4FB3FF",
+    "secondary": "#9AA4B2",
+    "success": "#3DDC97",
+    "warning": "#F4C430",
+    "danger": "#FF7A59",
+    "accent": "#4FB3FF",
+    "neutral": "#9AA4B2",
+    "highlight": "#3A3321",
 }
 
 CATEGORY_TRANSLATIONS = {
@@ -162,16 +174,41 @@ def set_plot_style():
     if plt is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
-    plt.style.use("seaborn-v0_8-whitegrid")
+    plt.style.use("dark_background")
     plt.rcParams.update(
         {
             "figure.figsize": (9, 5),
+            "figure.facecolor": PLOT_COLORS["background"],
+            "figure.edgecolor": PLOT_COLORS["background"],
+            "savefig.facecolor": PLOT_COLORS["background"],
+            "savefig.edgecolor": PLOT_COLORS["background"],
+            "axes.facecolor": PLOT_COLORS["panel"],
+            "axes.edgecolor": PLOT_COLORS["grid"],
+            "axes.labelcolor": PLOT_COLORS["muted_text"],
             "axes.spines.top": False,
             "axes.spines.right": False,
             "axes.titleweight": "bold",
             "axes.titlesize": 13,
+            "axes.titlecolor": PLOT_COLORS["text"],
             "axes.labelsize": 10,
+            "axes.prop_cycle": plt.cycler(
+                color=[
+                    PLOT_COLORS["q2"],
+                    PLOT_COLORS["q1"],
+                    PLOT_COLORS["q3"],
+                    PLOT_COLORS["q4"],
+                    PLOT_COLORS["neutral"],
+                ]
+            ),
             "font.size": 10,
+            "text.color": PLOT_COLORS["text"],
+            "xtick.color": PLOT_COLORS["muted_text"],
+            "ytick.color": PLOT_COLORS["muted_text"],
+            "grid.color": PLOT_COLORS["grid"],
+            "grid.alpha": 0.45,
+            "legend.facecolor": PLOT_COLORS["panel"],
+            "legend.edgecolor": PLOT_COLORS["grid"],
+            "legend.labelcolor": PLOT_COLORS["text"],
         }
     )
 
@@ -349,6 +386,93 @@ def add_q2_row_metrics(dataframe):
     return data
 
 
+def q2_overview(dataframe):
+    """Return high-level Q2 dataset dimensions."""
+    return {
+        "rows": len(dataframe),
+        "columns": dataframe.shape[1],
+        "unique_sellers": dataframe[Q2_USER_COLUMN].nunique(),
+        "unique_months": dataframe[Q2_DATE_COLUMN].nunique(),
+        "first_month": dataframe[Q2_DATE_COLUMN].min(),
+        "last_month": dataframe[Q2_DATE_COLUMN].max(),
+        "unique_categories": dataframe[Q2_CATEGORY_COLUMN].nunique(),
+    }
+
+
+def q2_data_quality_message(dataframe):
+    """Summarize basic Q2 quality checks at the expected row grain."""
+    dimension_columns = [Q2_USER_COLUMN, Q2_DATE_COLUMN, Q2_CATEGORY_COLUMN]
+    metric_columns = existing_columns(dataframe, Q2_NUMERIC_COLUMNS)
+    missing_values = dataframe.isna().sum().sum()
+    duplicate_grain_rows = dataframe.duplicated(dimension_columns).sum()
+    negative_metric_values = (dataframe[metric_columns] < 0).sum().sum()
+
+    if missing_values == duplicate_grain_rows == negative_metric_values == 0:
+        return (
+            "Data quality check: no missing values, no duplicate seller-month-category rows, "
+            "and no negative metric values."
+        )
+
+    return (
+        f"Data quality check: {missing_values} missing values, "
+        f"{duplicate_grain_rows} duplicate seller-month-category rows, "
+        f"and {negative_metric_values} negative metric values."
+    )
+
+
+def q2_metric_summary(dataframe):
+    """Summarize raw Q2 numeric columns for quick data understanding."""
+    metric_columns = existing_columns(dataframe, Q2_NUMERIC_COLUMNS)
+    summary = (
+        pd.DataFrame(
+            {
+                "Column": metric_columns,
+                "Metric": [readable_metric_label(column) for column in metric_columns],
+                "Total": dataframe[metric_columns].sum().values,
+                "Non-zero Rows": (dataframe[metric_columns] > 0).sum().values,
+                "Non-zero Row %": ((dataframe[metric_columns] > 0).mean() * 100).round(1).values,
+            }
+        )
+        .sort_values("Total", ascending=False)
+        .reset_index(drop=True)
+    )
+    summary["Total"] = summary.apply(
+        lambda row: eur(row["Total"]) if row["Column"] in FEE_COLUMNS else f"{row['Total']:,.0f}",
+        axis=1,
+    )
+    return summary
+
+
+def q2_row_metric_summary(dataframe):
+    """Describe row-level volume, commercial usage, and fees."""
+    data = add_q2_row_metrics(dataframe)
+    data["commercial_uses"] = data["paid_marketplace_actions"]
+    summary = data[["total_ad_insertions", "commercial_uses", "total_fees"]].describe().round(2)
+    summary = summary.rename(columns=readable_metric_label)
+    summary["Total Fees"] = [
+        f"{value:,.0f}" if index == "count" else f"€{value:,.2f}"
+        for index, value in summary["Total Fees"].items()
+    ]
+    return summary
+
+
+def q2_monthly_summary(dataframe):
+    """Aggregate Q2 activity by month."""
+    data = add_q2_row_metrics(dataframe)
+    data["commercial_uses"] = data["paid_marketplace_actions"]
+    return (
+        data.groupby(Q2_DATE_COLUMN, as_index=False)
+        .agg(
+            sellers=(Q2_USER_COLUMN, "nunique"),
+            rows=(Q2_USER_COLUMN, "size"),
+            categories=(Q2_CATEGORY_COLUMN, "nunique"),
+            total_ad_insertions=("total_ad_insertions", "sum"),
+            commercial_uses=("commercial_uses", "sum"),
+            total_fees=("total_fees", "sum"),
+        )
+    )
+
+
 def seller_level_q2_summary(dataframe):
     """Aggregate Q2 rows to one row per seller for prioritization analysis."""
     data = add_q2_row_metrics(dataframe)
@@ -424,6 +548,345 @@ def top_categories(dataframe, value_column="total_fees", top_n=10):
         .head(top_n)
         .reset_index(drop=True)
     )
+
+
+def q2_seller_summary_describe(seller_summary):
+    """Return a formatted seller-level distribution table."""
+    display = seller_summary.drop(
+        columns=existing_columns(
+            seller_summary,
+            [Q2_USER_COLUMN, "first_month", "last_month", "has_paid_visibility", "has_paid_ads"],
+        )
+    ).rename(columns=readable_metric_label)
+    summary = display.describe(percentiles=[0.25, 0.5, 0.75, 0.9, 0.95, 0.99]).round(2)
+    for column in existing_columns(summary, ["Total Fees", "Average Fees per Active Month"]):
+        summary[column] = [
+            f"{value:,.0f}" if index == "count" else f"€{value:,.2f}"
+            for index, value in summary[column].items()
+        ]
+    return summary
+
+
+def q2_anomaly_detail(
+    dataframe,
+    monthly_summary,
+    anomaly_seller_id=65950787,
+    anomaly_month="2023-11-01",
+    anomaly_category="Auto-onderdelen",
+):
+    """Return the row explaining the visible November 2023 spike."""
+    data = add_q2_row_metrics(dataframe)
+    anomaly_month = pd.Timestamp(anomaly_month)
+    anomaly_row = data[
+        data[Q2_USER_COLUMN].eq(anomaly_seller_id)
+        & data[Q2_DATE_COLUMN].eq(anomaly_month)
+        & data[Q2_CATEGORY_COLUMN].eq(anomaly_category)
+    ].iloc[0]
+    month_totals = monthly_summary.loc[monthly_summary[Q2_DATE_COLUMN].eq(anomaly_month)].iloc[0]
+
+    detail = pd.DataFrame(
+        [
+            {
+                "Seller ID": anomaly_seller_id,
+                "Month": anomaly_month.strftime("%Y-%m"),
+                "Category": readable_category_label(anomaly_category),
+                "Paid Ad Insertions": anomaly_row["N_PAID_AD_INSERTIONS"],
+                "Paid URL Features": anomaly_row["N_PAID_URL"],
+                "Paid URL Fees": anomaly_row["FEE_PAID_URL"],
+                "Total Fees": anomaly_row["total_fees"],
+                "Share of Monthly Ads": anomaly_row["total_ad_insertions"] / month_totals["total_ad_insertions"],
+                "Share of Monthly Fees": anomaly_row["total_fees"] / month_totals["total_fees"],
+            }
+        ]
+    )
+    return detail.style.format(
+        {
+            "Paid Ad Insertions": "{:,.0f}",
+            "Paid URL Features": "{:,.0f}",
+            "Paid URL Fees": "€{:,.0f}",
+            "Total Fees": "€{:,.0f}",
+            "Share of Monthly Ads": "{:.1%}",
+            "Share of Monthly Fees": "{:.1%}",
+        }
+    )
+
+
+def q2_spike_comparison(
+    dataframe,
+    monthly_summary,
+    anomaly_seller_id=65950787,
+    start_month="2023-09-01",
+    end_month="2024-01-01",
+):
+    """Compare monthly totals with and without the anomaly seller."""
+    data = add_q2_row_metrics(dataframe)
+    monthly_without_seller = (
+        data[data[Q2_USER_COLUMN].ne(anomaly_seller_id)]
+        .groupby(Q2_DATE_COLUMN, as_index=False)
+        .agg(
+            sellers=(Q2_USER_COLUMN, "nunique"),
+            total_ad_insertions=("total_ad_insertions", "sum"),
+            total_fees=("total_fees", "sum"),
+        )
+    )
+    comparison = monthly_summary[[Q2_DATE_COLUMN, "total_ad_insertions", "total_fees"]].merge(
+        monthly_without_seller[[Q2_DATE_COLUMN, "total_ad_insertions", "total_fees"]],
+        on=Q2_DATE_COLUMN,
+        suffixes=("_all", "_excluding_seller"),
+    )
+    comparison["Ads Explained by Seller"] = (
+        comparison["total_ad_insertions_all"] - comparison["total_ad_insertions_excluding_seller"]
+    )
+    comparison["Fees Explained by Seller"] = (
+        comparison["total_fees_all"] - comparison["total_fees_excluding_seller"]
+    )
+    comparison["Ads Explained %"] = comparison["Ads Explained by Seller"] / comparison["total_ad_insertions_all"]
+    comparison["Fees Explained %"] = comparison["Fees Explained by Seller"] / comparison["total_fees_all"]
+
+    display = comparison[
+        comparison[Q2_DATE_COLUMN].between(pd.Timestamp(start_month), pd.Timestamp(end_month))
+    ].copy()
+    display["Month"] = display[Q2_DATE_COLUMN].dt.strftime("%Y-%m")
+    display = display.rename(
+        columns={
+            "total_ad_insertions_all": "Ads: All Sellers",
+            "total_ad_insertions_excluding_seller": f"Ads: Excluding Seller {anomaly_seller_id}",
+            "total_fees_all": "Fees: All Sellers",
+            "total_fees_excluding_seller": f"Fees: Excluding Seller {anomaly_seller_id}",
+        }
+    )[
+        [
+            "Month",
+            "Ads: All Sellers",
+            f"Ads: Excluding Seller {anomaly_seller_id}",
+            "Ads Explained by Seller",
+            "Ads Explained %",
+            "Fees: All Sellers",
+            f"Fees: Excluding Seller {anomaly_seller_id}",
+            "Fees Explained by Seller",
+            "Fees Explained %",
+        ]
+    ]
+
+    def highlight_anomaly_month(row):
+        return [f"background-color: {PLOT_COLORS['highlight']}" if row["Month"] == "2023-11" else "" for _ in row]
+
+    return display.style.apply(highlight_anomaly_month, axis=1).format(
+        {
+            "Ads: All Sellers": "{:,.0f}",
+            f"Ads: Excluding Seller {anomaly_seller_id}": "{:,.0f}",
+            "Ads Explained by Seller": "{:,.0f}",
+            "Ads Explained %": "{:.1%}",
+            "Fees: All Sellers": "€{:,.0f}",
+            f"Fees: Excluding Seller {anomaly_seller_id}": "€{:,.0f}",
+            "Fees Explained by Seller": "€{:,.0f}",
+            "Fees Explained %": "{:.1%}",
+        }
+    ), monthly_without_seller
+
+
+def style_minimal_horizontal_bar(ax):
+    """Remove redundant axes from labeled horizontal bar charts."""
+    ax.grid(False)
+    ax.margins(x=0.15)
+    ax.set_xlabel("")
+    ax.tick_params(axis="x", bottom=False, labelbottom=False)
+    ax.tick_params(axis="y", left=False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    return ax
+
+
+def plot_q2_monthly_overview(monthly_summary, anomaly_month="2023-11-01"):
+    """Plot monthly sellers, ad insertions, and fees."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    anomaly_month = pd.Timestamp(anomaly_month)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    axes[0].bar(monthly_summary[Q2_DATE_COLUMN], monthly_summary["sellers"], width=20, color=PLOT_COLORS["primary"])
+    axes[0].set_title("Monthly Active Sellers")
+    axes[0].set_ylabel("Sellers")
+
+    axes[1].bar(monthly_summary[Q2_DATE_COLUMN], monthly_summary["total_ad_insertions"], width=20, color=PLOT_COLORS["q2"])
+    axes[1].set_title("Monthly Ad Insertions")
+    axes[1].set_ylabel("Ads")
+
+    axes[2].bar(monthly_summary[Q2_DATE_COLUMN], monthly_summary["total_fees"], width=20, color=PLOT_COLORS["q2"])
+    axes[2].set_title("Monthly Fees")
+    axes[2].set_ylabel("Fees")
+    axes[2].set_xlabel("Month")
+
+    for ax in axes:
+        format_number_axis(ax, axis="y")
+        ax.grid(axis="y", alpha=0.3)
+    format_eur_axis(axes[2], axis="y")
+
+    anomaly_ads = monthly_summary.loc[monthly_summary[Q2_DATE_COLUMN].eq(anomaly_month), "total_ad_insertions"].iloc[0]
+    anomaly_fees = monthly_summary.loc[monthly_summary[Q2_DATE_COLUMN].eq(anomaly_month), "total_fees"].iloc[0]
+    label_month = anomaly_month + pd.DateOffset(days=28)
+    axes[1].annotate(
+        "Anomaly",
+        xy=(anomaly_month, anomaly_ads),
+        xytext=(label_month, anomaly_ads * 0.78),
+        arrowprops={"arrowstyle": "->", "color": PLOT_COLORS["neutral"]},
+    )
+    axes[2].annotate(
+        "Anomaly",
+        xy=(anomaly_month, anomaly_fees),
+        xytext=(label_month, anomaly_fees * 0.68),
+        arrowprops={"arrowstyle": "->", "color": PLOT_COLORS["neutral"]},
+    )
+
+    fig.tight_layout()
+    return fig, axes
+
+
+def plot_q2_anomaly_comparison(monthly_summary, monthly_without_seller, anomaly_seller_id=65950787, anomaly_month="2023-11-01"):
+    """Plot monthly ads and fees with and without the anomaly seller."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    anomaly_month = pd.Timestamp(anomaly_month)
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    axes[0].plot(monthly_summary[Q2_DATE_COLUMN], monthly_summary["total_ad_insertions"], label="All Sellers", color=PLOT_COLORS["q2"])
+    axes[0].plot(
+        monthly_without_seller[Q2_DATE_COLUMN],
+        monthly_without_seller["total_ad_insertions"],
+        linestyle="--",
+        label=f"Excluding Seller {anomaly_seller_id}",
+        color=PLOT_COLORS["neutral"],
+    )
+    axes[0].set_title("Monthly Ad Insertions: With and Without Anomaly Seller")
+    axes[0].set_ylabel("Ads")
+
+    axes[1].plot(monthly_summary[Q2_DATE_COLUMN], monthly_summary["total_fees"], label="All Sellers", color=PLOT_COLORS["q2"])
+    axes[1].plot(
+        monthly_without_seller[Q2_DATE_COLUMN],
+        monthly_without_seller["total_fees"],
+        linestyle="--",
+        label=f"Excluding Seller {anomaly_seller_id}",
+        color=PLOT_COLORS["neutral"],
+    )
+    axes[1].set_title("Monthly Fees: With and Without Anomaly Seller")
+    axes[1].set_ylabel("Fees")
+    axes[1].set_xlabel("Month")
+
+    for ax in axes:
+        format_number_axis(ax, axis="y")
+        ax.grid(axis="y", alpha=0.3)
+        ax.legend()
+    format_eur_axis(axes[1], axis="y")
+
+    fig.tight_layout()
+    return fig, axes
+
+
+def plot_q2_combined_anomaly_overview(monthly_summary, monthly_without_seller, anomaly_seller_id=65950787):
+    """Combine active sellers with the anomaly comparison into one compact visual."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+
+    axes[0].plot(monthly_summary[Q2_DATE_COLUMN], monthly_summary["sellers"], color=PLOT_COLORS["q2"])
+    axes[0].set_title("Monthly Active Sellers")
+    axes[0].set_ylabel("Sellers")
+
+    axes[1].plot(monthly_summary[Q2_DATE_COLUMN], monthly_summary["total_ad_insertions"], label="All Sellers", color=PLOT_COLORS["q2"])
+    axes[1].plot(
+        monthly_without_seller[Q2_DATE_COLUMN],
+        monthly_without_seller["total_ad_insertions"],
+        linestyle="--",
+        label=f"Excluding Seller {anomaly_seller_id}",
+        color=PLOT_COLORS["neutral"],
+    )
+    axes[1].set_title("Monthly Ad Insertions")
+    axes[1].set_ylabel("Ads")
+
+    axes[2].plot(monthly_summary[Q2_DATE_COLUMN], monthly_summary["total_fees"], label="All Sellers", color=PLOT_COLORS["q2"])
+    axes[2].plot(
+        monthly_without_seller[Q2_DATE_COLUMN],
+        monthly_without_seller["total_fees"],
+        linestyle="--",
+        label=f"Excluding Seller {anomaly_seller_id}",
+        color=PLOT_COLORS["neutral"],
+    )
+    axes[2].set_title("Monthly Fees")
+    axes[2].set_ylabel("Fees")
+    axes[2].set_xlabel("Month")
+
+    for ax in axes:
+        format_number_axis(ax, axis="y")
+        ax.grid(axis="y", alpha=0.3)
+    for ax in axes[1:]:
+        ax.legend()
+    format_eur_axis(axes[2], axis="y")
+
+    fig.tight_layout()
+    return fig, axes
+
+
+def plot_q2_top_categories_by_fees(category_summary):
+    """Plot the top 10 fee categories as a labeled horizontal bar chart."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    top_category_fees = category_summary.head(10).sort_values("total_fees")
+    top_category_labels = top_category_fees[Q2_CATEGORY_COLUMN].map(readable_category_label)
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    ax.barh(top_category_labels, top_category_fees["total_fees"], color=PLOT_COLORS["primary"])
+    ax.set_title("Top Categories by Fees")
+    add_horizontal_bar_labels(ax, fmt="€{:,.0f}")
+    style_minimal_horizontal_bar(ax)
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.33)
+    return fig, ax
+
+
+def plot_q2_fee_mix(dataframe):
+    """Plot total fees by paid product."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    fee_mix = dataframe[existing_columns(dataframe, FEE_COLUMNS)].sum().sort_values()
+    fee_mix.index = [readable_metric_label(column) for column in fee_mix.index]
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.barh(fee_mix.index, fee_mix.values, color=PLOT_COLORS["q2"])
+    ax.set_title("Fee Mix by Paid Product")
+    add_horizontal_bar_labels(ax, fmt="€{:,.0f}")
+    style_minimal_horizontal_bar(ax)
+    fig.tight_layout()
+    return fig, ax
+
+
+def plot_q2_fee_concentration(seller_summary):
+    """Plot cumulative fee concentration by seller rank."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    seller_fee_rank = seller_summary.sort_values("total_fees", ascending=False).reset_index(drop=True)
+    seller_fee_rank["seller_rank_pct"] = (seller_fee_rank.index + 1) / len(seller_fee_rank) * 100
+    seller_fee_rank["cumulative_fee_pct"] = seller_fee_rank["total_fees"].cumsum() / seller_fee_rank["total_fees"].sum() * 100
+    top_25_fee_share = seller_fee_rank.loc[seller_fee_rank["seller_rank_pct"].ge(25), "cumulative_fee_pct"].iloc[0]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(seller_fee_rank["seller_rank_pct"], seller_fee_rank["cumulative_fee_pct"], color=PLOT_COLORS["q2"])
+    ax.axvline(25, color=PLOT_COLORS["neutral"], linestyle="--", linewidth=1)
+    ax.axhline(top_25_fee_share, color=PLOT_COLORS["neutral"], linestyle="--", linewidth=1)
+    ax.annotate(
+        f"Top 25% = {top_25_fee_share:.0f}% of fees",
+        xy=(25, top_25_fee_share),
+        xytext=(30, top_25_fee_share - 10),
+        arrowprops={"arrowstyle": "->", "color": PLOT_COLORS["neutral"]},
+    )
+    ax.set_title("Seller Fee Concentration")
+    ax.set_xlabel("Top Sellers Ranked by Fees (%)")
+    ax.set_ylabel("Cumulative Fees (%)")
+    format_percent_axis(ax, axis="both")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    return fig, ax
 
 
 def percentile(series):
@@ -587,6 +1050,23 @@ def q2_method_comparison(scored_sellers):
     return pd.DataFrame(rows)
 
 
+def q2_method_comparison_display(scored_sellers):
+    """Return a formatted method comparison table for presentation."""
+    return format_display_table(
+        q2_method_comparison(scored_sellers),
+        euro_columns=["Total fees"],
+        decimal_columns=[
+            "Avg recent paid usage score",
+            "Avg consistency score",
+            "Avg category breadth score",
+            "Avg recent growth score",
+            "Avg total fees score",
+            "Avg paid product breadth score",
+            "Avg readiness score",
+        ],
+    )
+
+
 def q2_method_overlap_summary(scored_sellers):
     """Summarize overlap between the readiness and total-fee top quartiles."""
     readiness = scored_sellers["is_top_25_readiness"]
@@ -612,8 +1092,8 @@ def plot_q2_method_overlap_venn(scored_sellers):
     fee_only = int((~readiness & fee).sum())
 
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
-    left = Circle((0.0, 0.0), 1.35, color=PLOT_COLORS["primary"], alpha=0.45)
-    right = Circle((1.25, 0.0), 1.35, color=PLOT_COLORS["secondary"], alpha=0.45)
+    left = Circle((0.0, 0.0), 1.35, color=PLOT_COLORS["q2"], alpha=0.50)
+    right = Circle((1.25, 0.0), 1.35, color=PLOT_COLORS["neutral"], alpha=0.45)
     ax.add_patch(left)
     ax.add_patch(right)
 
@@ -655,6 +1135,34 @@ def q2_selection_summary(scored_sellers):
     )
 
 
+def q2_selection_summary_display(scored_sellers):
+    """Return a formatted seller-selection comparison table."""
+    selection_summary = q2_selection_summary(scored_sellers).rename(
+        columns={
+            "selected_by": "Selected By",
+            "sellers": "Sellers",
+            "total_fees": "Total Fees",
+            "recent_total_fees": "Recent Fees",
+            "avg_active_months": "Avg Active Months",
+            "avg_recent_paid_usage": "Avg Recent Paid Usage",
+            "avg_categories": "Avg Categories",
+            "avg_paid_product_breadth": "Avg Paid Product Breadth",
+            "median_growth_ratio": "Median Growth Ratio",
+        }
+    )
+    return format_display_table(
+        selection_summary,
+        euro_columns=["Total Fees", "Recent Fees"],
+        decimal_columns=[
+            "Avg Active Months",
+            "Avg Recent Paid Usage",
+            "Avg Categories",
+            "Avg Paid Product Breadth",
+            "Median Growth Ratio",
+        ],
+    )
+
+
 def q2_bundle_recommendation_summary(scored_sellers):
     """Summarize Basic vs Plus recommendations inside the readiness top quartile."""
     priority_cohort = scored_sellers[scored_sellers["is_top_25_readiness"]]
@@ -671,6 +1179,32 @@ def q2_bundle_recommendation_summary(scored_sellers):
         )
         .sort_values("sellers", ascending=False)
         .reset_index(drop=True)
+    )
+
+
+def q2_bundle_recommendation_display(scored_sellers):
+    """Return a formatted Basic vs Plus recommendation table."""
+    bundle_recommendation = q2_bundle_recommendation_summary(scored_sellers).rename(
+        columns={
+            "recommended_bundle": "Recommended Bundle",
+            "sellers": "Sellers",
+            "total_fees": "Total Fees",
+            "avg_total_fees": "Avg Total Fees",
+            "avg_recent_paid_usage": "Avg Recent Paid Usage",
+            "avg_paid_visibility_uses": "Avg Paid Visibility Uses",
+            "avg_categories": "Avg Categories",
+            "avg_paid_product_breadth": "Avg Paid Product Breadth",
+        }
+    )
+    return format_display_table(
+        bundle_recommendation,
+        euro_columns=["Total Fees", "Avg Total Fees"],
+        decimal_columns=[
+            "Avg Recent Paid Usage",
+            "Avg Paid Visibility Uses",
+            "Avg Categories",
+            "Avg Paid Product Breadth",
+        ],
     )
 
 
@@ -849,6 +1383,54 @@ def q3_distribution_summary(dataframe):
         ],
         ignore_index=True,
     )[["Field", "Value", "Rows"]]
+
+
+def q3_dashboard_data(data_path=Q3_CSV_PATH, cohort_window_days=FREE_TRIAL_DAYS):
+    """Build the reusable Q3 dashboard inputs from the bundle registration file."""
+    bundle_df = load_q3_bundle_data(data_path)
+    launch_start, dashboard_reference_date = q3_reference_dates(bundle_df)
+    seller_fields = q3_seller_fields(bundle_df, dashboard_reference_date)
+    weekly_metrics = q3_weekly_metrics(
+        bundle_df,
+        seller_fields,
+        launch_start,
+        dashboard_reference_date,
+    )
+    revenue_events = q3_modeled_revenue_events(
+        bundle_df,
+        seller_fields,
+        dashboard_reference_date,
+    )
+    revenue_4w = q3_revenue_by_4_week_period(revenue_events, launch_start)
+    revenue_by_bundle = q3_revenue_by_4_week_period_and_bundle(revenue_events, launch_start)
+    registrations_4w = q3_registrations_by_4_week_period(seller_fields, launch_start)
+    cohort_metrics_28d = q3_cohort_metrics(
+        bundle_df,
+        seller_fields,
+        launch_start,
+        dashboard_reference_date,
+        cohort_window_days=cohort_window_days,
+    )
+    segment_metrics = q3_segment_metrics(
+        bundle_df,
+        seller_fields,
+        launch_start,
+        dashboard_reference_date,
+    )
+
+    return {
+        "bundle_df": bundle_df,
+        "launch_start": launch_start,
+        "dashboard_reference_date": dashboard_reference_date,
+        "seller_fields": seller_fields,
+        "weekly_metrics": weekly_metrics,
+        "revenue_events": revenue_events,
+        "revenue_4w": revenue_4w,
+        "revenue_by_bundle": revenue_by_bundle,
+        "registrations_4w": registrations_4w,
+        "cohort_metrics_28d": cohort_metrics_28d,
+        "segment_metrics": segment_metrics,
+    }
 
 
 def q3_current_bundle_at(dataframe, user_ids, as_of_date):
@@ -1139,6 +1721,15 @@ def q3_complete_bundle_revenue_periods(revenue_by_bundle, reference_date):
     return revenue.loc[period_end <= reference_date].copy()
 
 
+def q3_revenue_display_table(revenue_4w, periods=8):
+    """Return a compact formatted modeled-revenue table for notebook display."""
+    return format_display_table(
+        revenue_4w.tail(periods),
+        euro_columns=["modeled_paid_revenue_eur"],
+        integer_columns=["paid_billing_events"],
+    )
+
+
 def q3_trials_reaching_day_28_soon(sellers, reference_date, days_ahead=14):
     """List active trial sellers expected to reach day 28 soon."""
     cutoff_date = reference_date + pd.Timedelta(days=days_ahead)
@@ -1406,6 +1997,15 @@ def q3_segment_metrics(dataframe, sellers, launch_start, reference_date):
     return pd.DataFrame(rows).sort_values(["Customer type", "First bundle type"])
 
 
+def q3_segment_display_table(segment_metrics):
+    """Return a formatted segment diagnosis table for notebook display."""
+    return q3_format_rate_table(
+        segment_metrics,
+        rate_columns=["Day-28 paid conversion", "Plus share of active paid sellers"],
+        integer_columns=["Registrations", "Active paid sellers"],
+    )
+
+
 def format_q3_month_axis_for_weekly_bars(ax, weekly_index):
     """Label weekly bar charts at month starts to keep the date axis readable."""
     tick_positions = []
@@ -1440,7 +2040,7 @@ def plot_q3_weekly_new_registrations(weekly_metrics):
     ax = weekly_metrics[["Weekly new Basic registrations", "Weekly new Plus registrations"]].plot(
         kind="line",
         figsize=(11, 4),
-        color=[PLOT_COLORS["primary"], PLOT_COLORS["secondary"]],
+        color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
     ax.set_title("Weekly New First-Ever Bundle Registrations")
@@ -1456,7 +2056,7 @@ def plot_q3_active_paid_sellers(weekly_metrics):
 
     ax = weekly_metrics[["Active paid Basic sellers", "Active paid Plus sellers"]].plot(
         figsize=(11, 4),
-        color=[PLOT_COLORS["primary"], PLOT_COLORS["secondary"]],
+        color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
     ax.set_title("Active Paid Sellers")
@@ -1479,10 +2079,10 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
     ax = weekly_metrics[plot_columns].plot(
         figsize=(11, 4.5),
         color=[
-            PLOT_COLORS["primary"],
-            PLOT_COLORS["secondary"],
-            PLOT_COLORS["primary"],
-            PLOT_COLORS["secondary"],
+            PLOT_COLORS["neutral"],
+            PLOT_COLORS["q3"],
+            PLOT_COLORS["neutral"],
+            PLOT_COLORS["q3"],
         ],
         linewidth=2,
         legend=False,
@@ -1490,10 +2090,10 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
     for line, linestyle in zip(ax.lines, ["-", "-", "--", "--"]):
         line.set_linestyle(linestyle)
     legend_handles = [
-        Line2D([0], [0], color=PLOT_COLORS["primary"], lw=2, linestyle="-", label="Paid Basic"),
-        Line2D([0], [0], color=PLOT_COLORS["secondary"], lw=2, linestyle="-", label="Paid Plus"),
-        Line2D([0], [0], color=PLOT_COLORS["primary"], lw=2, linestyle="--", label="Trial Basic"),
-        Line2D([0], [0], color=PLOT_COLORS["secondary"], lw=2, linestyle="--", label="Trial Plus"),
+        Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="-", label="Paid Basic"),
+        Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="-", label="Paid Plus"),
+        Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="--", label="Trial Basic"),
+        Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="--", label="Trial Plus"),
     ]
     ax.legend(handles=legend_handles)
     ax.set_title("Active Bundle Sellers")
@@ -1509,7 +2109,7 @@ def plot_q3_active_trial_sellers(weekly_metrics):
 
     ax = weekly_metrics["Active trial sellers"].plot(
         figsize=(11, 3.5),
-        color="#72B7B2",
+        color=PLOT_COLORS["q3"],
         linewidth=2,
     )
     ax.set_title("Active Trial Sellers")
@@ -1525,7 +2125,7 @@ def plot_q3_plus_share(weekly_metrics):
 
     ax = weekly_metrics["Plus share of active paid sellers"].mul(100).plot(
         figsize=(11, 3.5),
-        color=PLOT_COLORS["secondary"],
+        color=PLOT_COLORS["q3"],
         linewidth=2,
     )
     ax.set_title("Plus Share of Active Paid Sellers")
@@ -1545,7 +2145,7 @@ def plot_q3_sales_overview(weekly_metrics):
     weekly_metrics[["Weekly new Basic registrations", "Weekly new Plus registrations"]].plot(
         kind="line",
         ax=axes[0, 0],
-        color=[PLOT_COLORS["primary"], PLOT_COLORS["secondary"]],
+        color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
     axes[0, 0].set_title("Weekly New First-Ever Bundle Registrations")
@@ -1554,16 +2154,18 @@ def plot_q3_sales_overview(weekly_metrics):
 
     weekly_metrics[["Active trial sellers", "Active paid Basic sellers", "Active paid Plus sellers"]].plot(
         ax=axes[0, 1],
-        color=["#72B7B2", PLOT_COLORS["primary"], PLOT_COLORS["secondary"]],
+        color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
+    if len(axes[0, 1].lines) > 2:
+        axes[0, 1].lines[2].set_linestyle("--")
     axes[0, 1].set_title("Active Trial and Paid Sellers")
     axes[0, 1].set_xlabel("")
     axes[0, 1].set_ylabel("Sellers")
 
     weekly_metrics["Plus share of active paid sellers"].mul(100).plot(
         ax=axes[1, 0],
-        color=PLOT_COLORS["secondary"],
+        color=PLOT_COLORS["q3"],
         linewidth=2,
     )
     axes[1, 0].set_title("Plus Share of Active Paid Sellers")
@@ -1573,7 +2175,7 @@ def plot_q3_sales_overview(weekly_metrics):
 
     weekly_metrics["Total active paid sellers"].plot(
         ax=axes[1, 1],
-        color=PLOT_COLORS["success"],
+        color=PLOT_COLORS["q3"],
         linewidth=2,
     )
     axes[1, 1].set_title("Total Active Paid Sellers")
@@ -1597,7 +2199,7 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
         ax.plot(
             x_values,
             y_values,
-            color=PLOT_COLORS["success"],
+            color=PLOT_COLORS["q3"],
             marker="o",
             linewidth=2,
         )
@@ -1610,7 +2212,7 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
             ax.plot(
                 x_values,
                 y_values,
-                color=PLOT_COLORS["success"],
+                color=PLOT_COLORS["q3"],
                 marker="o",
                 linewidth=2,
             )
@@ -1620,7 +2222,7 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
             ax.plot(
                 x_values[:solid_end],
                 y_values[:solid_end],
-                color=PLOT_COLORS["success"],
+                color=PLOT_COLORS["q3"],
                 marker="o",
                 linewidth=2,
             )
@@ -1628,7 +2230,7 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
             ax.plot(
                 x_values[dashed_start:],
                 y_values[dashed_start:],
-                color=PLOT_COLORS["success"],
+                color=PLOT_COLORS["q3"],
                 marker="o",
                 linewidth=2,
                 linestyle="--",
@@ -1678,7 +2280,7 @@ def plot_q3_latest_revenue_by_bundle(revenue_by_bundle, reference_date=None):
     ax = latest["modeled_paid_revenue_eur"].plot(
         kind="bar",
         figsize=(5.5, 3.5),
-        color=[PLOT_COLORS["primary"], PLOT_COLORS["secondary"]],
+        color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         legend=False,
     )
     ax.set_title(f"Latest Complete Modeled Revenue Split ({latest_period:%Y-%m-%d})")
@@ -1706,10 +2308,10 @@ def plot_q3_cohort_metrics(cohort_metrics):
         marker="o",
         linewidth=2,
         color=[
-            PLOT_COLORS["primary"],
-            PLOT_COLORS["secondary"],
-            PLOT_COLORS["success"],
-            PLOT_COLORS["warning"],
+            PLOT_COLORS["q3"],
+            PLOT_COLORS["q1"],
+            PLOT_COLORS["q2"],
+            PLOT_COLORS["q4"],
         ],
     )
     ax.set_title("28-Day Cohort Customer Quality")
@@ -1760,3 +2362,96 @@ def q3_business_impact_placeholder_table():
             },
         ]
     )
+
+
+def q3_dummy_business_impact_data():
+    """Return small synthetic datasets for future Business Impact visual mockups."""
+    relative_days = pd.Index([-56, -28, 0, 28, 56, 84], name="Relative day")
+    return {
+        "revenue_waterfall": pd.DataFrame(
+            {
+                "Component": [
+                    "Bundle revenue",
+                    "Lost feature revenue",
+                    "Lost CPC revenue",
+                    "Refunds / credits",
+                    "Net impact",
+                ],
+                "Value": [120_000, -28_000, -12_000, -5_000, 75_000],
+            }
+        ),
+        "controlled_impact": pd.DataFrame(
+            {
+                "Relative day": relative_days,
+                "Adopters": [100, 101, 100, 111, 118, 123],
+                "Matched control": [100, 100, 100, 103, 104, 105],
+            }
+        ),
+        "seller_value": pd.DataFrame(
+            {
+                "Relative day": relative_days,
+                "Basic": [100, 100, 100, 107, 110, 112],
+                "Plus": [100, 101, 100, 115, 123, 128],
+            }
+        ),
+        "guardrails": pd.DataFrame(
+            {
+                "Week": pd.date_range("2025-01-06", periods=8, freq="W-MON"),
+                "Bundle sellers": [1.8, 1.9, 2.0, 2.1, 2.0, 2.2, 2.1, 2.2],
+                "Non-bundle sellers": [1.7, 1.8, 1.8, 1.9, 1.8, 1.9, 1.9, 2.0],
+            }
+        ),
+    }
+
+
+def plot_q3_business_impact_mockups(dummy_data=None):
+    """Plot clearly labeled dummy-data mockups for future Business Impact modules."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    data = dummy_data or q3_dummy_business_impact_data()
+    fig, axes = plt.subplots(2, 2, figsize=(14, 8), constrained_layout=True)
+
+    waterfall = data["revenue_waterfall"]
+    colors = [
+        PLOT_COLORS["q3"] if value >= 0 else PLOT_COLORS["danger"]
+        for value in waterfall["Value"]
+    ]
+    axes[0, 0].bar(waterfall["Component"], waterfall["Value"], color=colors)
+    axes[0, 0].axhline(0, color=PLOT_COLORS["grid"], linewidth=1)
+    axes[0, 0].set_title("Mock Revenue Impact Waterfall")
+    axes[0, 0].set_ylabel("Revenue impact (€)")
+    axes[0, 0].tick_params(axis="x", rotation=25)
+
+    controlled = data["controlled_impact"].set_index("Relative day")
+    controlled.plot(
+        ax=axes[0, 1],
+        color=[PLOT_COLORS["q3"], PLOT_COLORS["neutral"]],
+        linewidth=2,
+    )
+    axes[0, 1].axvline(0, color=PLOT_COLORS["grid"], linewidth=1)
+    axes[0, 1].set_title("Mock Adopters vs Matched Control")
+    axes[0, 1].set_ylabel("Indexed metric")
+
+    seller_value = data["seller_value"].set_index("Relative day")
+    seller_value.plot(
+        ax=axes[1, 0],
+        color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
+        linewidth=2,
+    )
+    axes[1, 0].axvline(0, color=PLOT_COLORS["grid"], linewidth=1)
+    axes[1, 0].set_title("Mock Seller Outcome Uplift")
+    axes[1, 0].set_ylabel("Indexed leads per active ad")
+
+    guardrails = data["guardrails"].set_index("Week")
+    guardrails.plot(
+        ax=axes[1, 1],
+        color=[PLOT_COLORS["q3"], PLOT_COLORS["neutral"]],
+        linewidth=2,
+    )
+    axes[1, 1].set_title("Mock Marketplace Guardrail Trend")
+    axes[1, 1].set_ylabel("Complaint / report rate (%)")
+    axes[1, 1].set_xlabel("")
+
+    fig.suptitle("Business Impact Placeholders - Dummy Data Only", fontsize=14, fontweight="bold")
+    return fig, axes
