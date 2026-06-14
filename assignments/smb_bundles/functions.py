@@ -31,10 +31,12 @@ except ModuleNotFoundError:
 ASSIGNMENT_DIR = Path(__file__).resolve().parent
 DATA_DIR = ASSIGNMENT_DIR / "data"
 DOCS_DIR = ASSIGNMENT_DIR / "docs"
+DELIVERABLES_DIR = ASSIGNMENT_DIR.parents[1] / "deliverables" / "smb_bundles"
 
 SOURCE_WORKBOOK_PATH = DATA_DIR / "Marktplaats2dehands Business Analytics SMB Dataset.xlsx"
 Q2_CSV_PATH = DATA_DIR / "q2_prioritize.csv"
 Q3_CSV_PATH = DATA_DIR / "q3_monitor.csv"
+Q2_SCORED_SELLERS_CSV_PATH = DELIVERABLES_DIR / "q2_scored_sellers.csv"
 
 Q2_DATE_COLUMN = "FTR_MONTH"
 Q2_USER_COLUMN = "USER_ID"
@@ -73,11 +75,11 @@ FREE_TRIAL_DAYS = 28
 ACTIVE_SUBSCRIPTION_END_DATE = pd.Timestamp("2099-12-31")
 
 PLOT_COLORS = {
-    "background": "#111418",
-    "panel": "#171B21",
-    "grid": "#303640",
-    "text": "#E8EAED",
-    "muted_text": "#AAB2BF",
+    "background": "#050505",
+    "panel": "#050505",
+    "grid": "#3A3A3A",
+    "text": "#F7F7F2",
+    "muted_text": "#A5A5A5",
     "q1": "#F4C430",
     "q2": "#4FB3FF",
     "q3": "#3DDC97",
@@ -337,6 +339,24 @@ def add_horizontal_bar_labels(ax, fmt="{:,.0f}", padding=4):
             continue
         ax.annotate(
             fmt.format(width),
+            (width, patch.get_y() + patch.get_height() / 2),
+            ha="left",
+            va="center",
+            xytext=(padding, 0),
+            textcoords="offset points",
+            fontsize=9,
+        )
+    return ax
+
+
+def add_horizontal_bar_text_labels(ax, labels, padding=4):
+    """Add custom text labels to the right of horizontal bars."""
+    for patch, label in zip(ax.patches, labels):
+        width = patch.get_width()
+        if pd.isna(width):
+            continue
+        ax.annotate(
+            label,
             (width, patch.get_y() + patch.get_height() / 2),
             ha="left",
             va="center",
@@ -834,10 +854,15 @@ def plot_q2_top_categories_by_fees(category_summary):
 
     top_category_fees = category_summary.head(10).sort_values("total_fees")
     top_category_labels = top_category_fees[Q2_CATEGORY_COLUMN].map(readable_category_label)
+    total_fees = category_summary["total_fees"].sum()
+    bar_labels = [
+        f"€{value:,.0f} ({value / total_fees:.1%})"
+        for value in top_category_fees["total_fees"]
+    ]
     fig, ax = plt.subplots(figsize=(11, 5.5))
     ax.barh(top_category_labels, top_category_fees["total_fees"], color=PLOT_COLORS["primary"])
     ax.set_title("Top Categories by Fees")
-    add_horizontal_bar_labels(ax, fmt="€{:,.0f}")
+    add_horizontal_bar_text_labels(ax, bar_labels)
     style_minimal_horizontal_bar(ax)
     fig.tight_layout()
     fig.subplots_adjust(left=0.33)
@@ -850,11 +875,13 @@ def plot_q2_fee_mix(dataframe):
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
     fee_mix = dataframe[existing_columns(dataframe, FEE_COLUMNS)].sum().sort_values()
+    total_fees = fee_mix.sum()
+    bar_labels = [f"€{value:,.0f} ({value / total_fees:.1%})" for value in fee_mix.values]
     fee_mix.index = [readable_metric_label(column) for column in fee_mix.index]
     fig, ax = plt.subplots(figsize=(9, 4.5))
     ax.barh(fee_mix.index, fee_mix.values, color=PLOT_COLORS["q2"])
     ax.set_title("Fee Mix by Paid Product")
-    add_horizontal_bar_labels(ax, fmt="€{:,.0f}")
+    add_horizontal_bar_text_labels(ax, bar_labels)
     style_minimal_horizontal_bar(ax)
     fig.tight_layout()
     return fig, ax
@@ -924,7 +951,7 @@ def q2_paid_product_breadth(dataframe):
 
 
 def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
-    """Score sellers for outreach using recency, adoption, consistency, growth, and fees."""
+    """Score sellers for outreach readiness using recency, adoption, consistency, growth, and fees."""
     data = add_q2_row_metrics(dataframe)
 
     if seller_summary is None:
@@ -978,7 +1005,7 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
     scored["category_breadth_score"] = percentile(scored["categories"])
     scored["growth_score"] = percentile(scored["paid_usage_growth_ratio"])
     scored["fee_score"] = percentile(scored["total_fees"])
-    score_columns = [
+    outreach_score_columns = [
         "recent_paid_usage_score",
         "paid_product_breadth_score",
         "consistency_score",
@@ -986,47 +1013,55 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
         "growth_score",
         "fee_score",
     ]
-    scored["outreach_readiness_score"] = scored[score_columns].mean(axis=1)
+    scored["outreach_readiness_score"] = scored[outreach_score_columns].mean(axis=1)
 
     cohort_size = int(np.ceil(len(scored) * top_share))
-    readiness_top_ids = set(scored.nlargest(cohort_size, "outreach_readiness_score")[Q2_USER_COLUMN])
+    outreach_ready_ids = set(scored.nlargest(cohort_size, "outreach_readiness_score")[Q2_USER_COLUMN])
     fee_top_ids = set(scored.nlargest(cohort_size, "total_fees")[Q2_USER_COLUMN])
 
-    scored["is_top_25_readiness"] = scored[Q2_USER_COLUMN].isin(readiness_top_ids)
-    scored["is_top_25_total_fees"] = scored[Q2_USER_COLUMN].isin(fee_top_ids)
-    scored["selected_by"] = np.select(
+    scored["is_outreach_ready_group"] = scored[Q2_USER_COLUMN].isin(outreach_ready_ids)
+    scored["is_total_fee_group"] = scored[Q2_USER_COLUMN].isin(fee_top_ids)
+    scored["selection_group"] = np.select(
         [
-            scored["is_top_25_readiness"] & scored["is_top_25_total_fees"],
-            scored["is_top_25_readiness"],
-            scored["is_top_25_total_fees"],
+            scored["is_outreach_ready_group"] & scored["is_total_fee_group"],
+            scored["is_outreach_ready_group"],
+            scored["is_total_fee_group"],
         ],
-        ["Both methods", "Readiness only", "Fee-only"],
+        ["Both groups", "Outreach ready group only", "Total-fee group only"],
         default="Neither",
     )
 
-    scored["plus_fit_score"] = (
-        percentile(scored["paid_visibility_uses"]) * 0.45
-        + percentile(scored["paid_product_breadth"]) * 0.35
-        + percentile(scored["categories"]) * 0.20
+    scored["paid_visibility_score"] = percentile(scored["paid_visibility_uses"])
+    scored["listing_volume_score"] = percentile(scored["total_ad_insertions"])
+    bundle_fit_columns = [
+        scored["paid_visibility_score"],
+        scored["paid_product_breadth_score"],
+        scored["listing_volume_score"],
+    ]
+    scored["bundle_fit_score"] = pd.concat(bundle_fit_columns, axis=1).mean(axis=1)
+    bundle_fit_cutoff = scored.loc[scored["is_outreach_ready_group"], "bundle_fit_score"].quantile(0.60)
+    scored["is_targeted_for_plus"] = (
+        scored["is_outreach_ready_group"] & scored["bundle_fit_score"].ge(bundle_fit_cutoff)
     )
-    plus_fit_cutoff = scored.loc[scored["is_top_25_readiness"], "plus_fit_score"].quantile(0.60)
-    scored["recommended_bundle"] = np.where(scored["plus_fit_score"].ge(plus_fit_cutoff), "Plus", "Basic")
+    scored["bundle_target_group"] = np.where(
+        scored["is_targeted_for_plus"], "Targeted for Plus group", "Targeted for Basic group"
+    )
 
     return scored.sort_values("outreach_readiness_score", ascending=False).reset_index(drop=True)
 
 
 def q2_method_comparison(scored_sellers):
-    """Compare the readiness-score top quartile against a fee-only top quartile."""
+    """Compare the outreach-ready top quartile against a fee-only top quartile."""
     method_flags = {
-        "Readiness score": "is_top_25_readiness",
-        "Total-fee rank": "is_top_25_total_fees",
+        "Outreach ready group": "is_outreach_ready_group",
+        "Total-fee group": "is_total_fee_group",
     }
     signal_score_columns = {
+        "Avg total fees score": "fee_score",
         "Avg recent paid usage score": "recent_paid_usage_score",
         "Avg consistency score": "consistency_score",
         "Avg category breadth score": "category_breadth_score",
         "Avg recent growth score": "growth_score",
-        "Avg total fees score": "fee_score",
         "Avg paid product breadth score": "paid_product_breadth_score",
     }
     rows = []
@@ -1036,7 +1071,7 @@ def q2_method_comparison(scored_sellers):
         row = {
             "Method": method,
             "Selected Sellers": len(selected),
-            "Total fees": selected["total_fees"].sum(),
+            "Avg fees per seller": selected["total_fees"].mean(),
         }
         row.update(
             {
@@ -1044,7 +1079,7 @@ def q2_method_comparison(scored_sellers):
                 for signal, score_column in signal_score_columns.items()
             }
         )
-        row["Avg readiness score"] = selected["outreach_readiness_score"].mean() * 100
+        row["Avg outreach readiness score"] = selected["outreach_readiness_score"].mean() * 100
         rows.append(row)
 
     return pd.DataFrame(rows)
@@ -1054,42 +1089,118 @@ def q2_method_comparison_display(scored_sellers):
     """Return a formatted method comparison table for presentation."""
     return format_display_table(
         q2_method_comparison(scored_sellers),
-        euro_columns=["Total fees"],
+        euro_columns=["Avg fees per seller"],
         decimal_columns=[
+            "Avg total fees score",
             "Avg recent paid usage score",
             "Avg consistency score",
             "Avg category breadth score",
             "Avg recent growth score",
-            "Avg total fees score",
             "Avg paid product breadth score",
-            "Avg readiness score",
+            "Avg outreach readiness score",
         ],
     )
 
 
+def clean_q2_score_profile_axis(ax):
+    """Remove visual axis scaffolding while keeping category and axis labels."""
+    ax.grid(False)
+    ax.tick_params(axis="x", which="both", bottom=False, top=False, labelbottom=False)
+    ax.tick_params(axis="y", which="both", left=False, right=False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    return ax
+
+
+def plot_q2_method_score_profile(scored_sellers):
+    """Plot average signal scores for outreach-ready vs total-fee selection."""
+    if plt is None:
+        raise ImportError("matplotlib is required for plotting")
+
+    comparison = q2_method_comparison(scored_sellers).set_index("Method")
+    score_columns = [
+        "Avg total fees score",
+        "Avg recent paid usage score",
+        "Avg consistency score",
+        "Avg category breadth score",
+        "Avg recent growth score",
+        "Avg paid product breadth score",
+        "Avg outreach readiness score",
+    ]
+    labels = [
+        "Total fees",
+        "Recent paid usage",
+        "Consistency",
+        "Category breadth",
+        "Recent growth",
+        "Paid product breadth",
+        "Outreach readiness",
+    ]
+    y = np.arange(len(labels))
+    bar_height = 0.36
+
+    fig, ax = plt.subplots(figsize=(10.5, 4.8))
+    ax.barh(
+        y - bar_height / 2,
+        comparison.loc["Outreach ready group", score_columns],
+        height=bar_height,
+        color=PLOT_COLORS["q2"],
+        label="Outreach ready group",
+    )
+    ax.barh(
+        y + bar_height / 2,
+        comparison.loc["Total-fee group", score_columns],
+        height=bar_height,
+        color=PLOT_COLORS["neutral"],
+        label="Total-fee group",
+    )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 105)
+    ax.set_xlabel("Average percentile score")
+    ax.set_title("Signal Comparison by Seller Group")
+    ax.legend(loc="lower right")
+    clean_q2_score_profile_axis(ax)
+
+    for patch in ax.patches:
+        width = patch.get_width()
+        ax.annotate(
+            f"{width:.1f}",
+            (width, patch.get_y() + patch.get_height() / 2),
+            ha="left",
+            va="center",
+            xytext=(4, 0),
+            textcoords="offset points",
+            fontsize=8,
+        )
+    return fig, ax
+
+
 def q2_method_overlap_summary(scored_sellers):
-    """Summarize overlap between the readiness and total-fee top quartiles."""
-    readiness = scored_sellers["is_top_25_readiness"]
-    fee = scored_sellers["is_top_25_total_fees"]
+    """Summarize overlap between the outreach-ready and total-fee top quartiles."""
+    outreach_ready = scored_sellers["is_outreach_ready_group"]
+    fee = scored_sellers["is_total_fee_group"]
     return pd.DataFrame(
         [
-            {"Comparison": "Selected by both methods", "Sellers": int((readiness & fee).sum())},
-            {"Comparison": "Readiness only", "Sellers": int((readiness & ~fee).sum())},
-            {"Comparison": "Total-fee only", "Sellers": int((~readiness & fee).sum())},
+            {"Comparison": "Selected by both groups", "Sellers": int((outreach_ready & fee).sum())},
+            {"Comparison": "Outreach ready group only", "Sellers": int((outreach_ready & ~fee).sum())},
+            {"Comparison": "Total-fee group only", "Sellers": int((~outreach_ready & fee).sum())},
         ]
     )
 
 
 def plot_q2_method_overlap_venn(scored_sellers):
-    """Plot a two-set Venn diagram for readiness vs total-fee selection."""
+    """Plot a two-set Venn diagram for outreach-ready vs total-fee selection."""
     if plt is None or Circle is None:
         raise ImportError("matplotlib is required for plotting")
 
-    readiness = scored_sellers["is_top_25_readiness"]
-    fee = scored_sellers["is_top_25_total_fees"]
-    both = int((readiness & fee).sum())
-    readiness_only = int((readiness & ~fee).sum())
-    fee_only = int((~readiness & fee).sum())
+    outreach_ready = scored_sellers["is_outreach_ready_group"]
+    fee = scored_sellers["is_total_fee_group"]
+    both = int((outreach_ready & fee).sum())
+    outreach_ready_only = int((outreach_ready & ~fee).sum())
+    fee_only = int((~outreach_ready & fee).sum())
 
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
     left = Circle((0.0, 0.0), 1.35, color=PLOT_COLORS["q2"], alpha=0.50)
@@ -1097,18 +1208,15 @@ def plot_q2_method_overlap_venn(scored_sellers):
     ax.add_patch(left)
     ax.add_patch(right)
 
-    ax.text(-0.65, 0.1, f"{readiness_only:,}", ha="center", va="center", fontsize=20, fontweight="bold")
+    ax.text(-0.65, 0.1, f"{outreach_ready_only:,}", ha="center", va="center", fontsize=20, fontweight="bold")
     ax.text(0.62, 0.1, f"{both:,}", ha="center", va="center", fontsize=20, fontweight="bold")
     ax.text(1.9, 0.1, f"{fee_only:,}", ha="center", va="center", fontsize=20, fontweight="bold")
 
-    ax.text(-0.65, -0.2, "Readiness only", ha="center", va="center", fontsize=10)
-    ax.text(0.62, -0.2, "Both methods", ha="center", va="center", fontsize=10)
+    ax.text(-0.65, -0.2, "Outreach ready only", ha="center", va="center", fontsize=10)
+    ax.text(0.62, -0.2, "Both groups", ha="center", va="center", fontsize=10)
     ax.text(1.9, -0.2, "Total-fee only", ha="center", va="center", fontsize=10)
 
-    ax.text(-0.25, 1.45, "Readiness score", ha="center", va="center", fontsize=12, fontweight="bold")
-    ax.text(1.5, 1.45, "Total-fee rank", ha="center", va="center", fontsize=12, fontweight="bold")
-
-    ax.set_title("Seller Overlap Between Outreach Prioritization Methods", pad=16)
+    ax.set_title("Seller Overlap Between Targeting Groups", pad=16)
     ax.set_xlim(-1.65, 2.9)
     ax.set_ylim(-1.45, 1.85)
     ax.set_aspect("equal")
@@ -1117,13 +1225,13 @@ def plot_q2_method_overlap_venn(scored_sellers):
 
 
 def q2_selection_summary(scored_sellers):
-    """Summarize sellers selected by both, one, or neither prioritization method."""
+    """Summarize sellers selected by both, one, or neither prioritization group."""
     return (
-        scored_sellers.groupby("selected_by", as_index=False)
+        scored_sellers.groupby("selection_group", as_index=False)
         .agg(
             sellers=(Q2_USER_COLUMN, "nunique"),
-            total_fees=("total_fees", "sum"),
-            recent_total_fees=("recent_total_fees", "sum"),
+            avg_total_fees=("total_fees", "mean"),
+            avg_recent_total_fees=("recent_total_fees", "mean"),
             avg_active_months=("active_months", "mean"),
             avg_recent_paid_usage=("recent_paid_usage", "mean"),
             avg_categories=("categories", "mean"),
@@ -1139,73 +1247,198 @@ def q2_selection_summary_display(scored_sellers):
     """Return a formatted seller-selection comparison table."""
     selection_summary = q2_selection_summary(scored_sellers).rename(
         columns={
-            "selected_by": "Selected By",
+            "selection_group": "Selection Group",
             "sellers": "Sellers",
-            "total_fees": "Total Fees",
-            "recent_total_fees": "Recent Fees",
+            "avg_total_fees": "Avg Fees per Seller",
+            "avg_recent_total_fees": "Avg 6mo Fees per Seller",
             "avg_active_months": "Avg Active Months",
             "avg_recent_paid_usage": "Avg Recent Paid Usage",
             "avg_categories": "Avg Categories",
             "avg_paid_product_breadth": "Avg Paid Product Breadth",
-            "median_growth_ratio": "Median Growth Ratio",
+            "median_growth_ratio": "Median 6mo Paid Action Growth Rate",
         }
     )
+    selection_summary["Median 6mo Paid Action Growth Rate"] = selection_summary[
+        "Median 6mo Paid Action Growth Rate"
+    ].map(lambda value: f"{value - 1:+.0%}")
     return format_display_table(
         selection_summary,
-        euro_columns=["Total Fees", "Recent Fees"],
+        euro_columns=["Avg Fees per Seller", "Avg 6mo Fees per Seller"],
         decimal_columns=[
             "Avg Active Months",
             "Avg Recent Paid Usage",
             "Avg Categories",
             "Avg Paid Product Breadth",
-            "Median Growth Ratio",
         ],
     )
 
 
-def q2_bundle_recommendation_summary(scored_sellers):
-    """Summarize Basic vs Plus recommendations inside the readiness top quartile."""
-    priority_cohort = scored_sellers[scored_sellers["is_top_25_readiness"]]
-    return (
-        priority_cohort.groupby("recommended_bundle", as_index=False)
+def q2_bundle_targeting_summary(scored_sellers):
+    """Summarize Basic vs Plus targeting inside the outreach-ready group."""
+    priority_cohort = scored_sellers[scored_sellers["is_outreach_ready_group"]]
+    summary = (
+        priority_cohort.groupby("bundle_target_group", as_index=False)
         .agg(
             sellers=(Q2_USER_COLUMN, "nunique"),
-            total_fees=("total_fees", "sum"),
-            avg_total_fees=("total_fees", "mean"),
-            avg_recent_paid_usage=("recent_paid_usage", "mean"),
-            avg_paid_visibility_uses=("paid_visibility_uses", "mean"),
-            avg_categories=("categories", "mean"),
-            avg_paid_product_breadth=("paid_product_breadth", "mean"),
+            avg_fees_per_seller=("total_fees", "mean"),
+            avg_paid_visibility_score=("paid_visibility_score", "mean"),
+            avg_paid_product_breadth_score=("paid_product_breadth_score", "mean"),
+            avg_listing_volume_score=("listing_volume_score", "mean"),
+            avg_bundle_fit_score=("bundle_fit_score", "mean"),
+            avg_outreach_readiness_score=("outreach_readiness_score", "mean"),
         )
-        .sort_values("sellers", ascending=False)
+        .sort_values("bundle_target_group", ascending=False)
         .reset_index(drop=True)
     )
+    score_columns = [
+        "avg_paid_visibility_score",
+        "avg_paid_product_breadth_score",
+        "avg_listing_volume_score",
+        "avg_bundle_fit_score",
+        "avg_outreach_readiness_score",
+    ]
+    summary[score_columns] *= 100
+    return summary
 
 
-def q2_bundle_recommendation_display(scored_sellers):
-    """Return a formatted Basic vs Plus recommendation table."""
-    bundle_recommendation = q2_bundle_recommendation_summary(scored_sellers).rename(
+def q2_bundle_targeting_display(scored_sellers):
+    """Return a formatted Basic vs Plus targeting table."""
+    bundle_targeting = q2_bundle_targeting_summary(scored_sellers).rename(
         columns={
-            "recommended_bundle": "Recommended Bundle",
-            "sellers": "Sellers",
-            "total_fees": "Total Fees",
-            "avg_total_fees": "Avg Total Fees",
-            "avg_recent_paid_usage": "Avg Recent Paid Usage",
-            "avg_paid_visibility_uses": "Avg Paid Visibility Uses",
-            "avg_categories": "Avg Categories",
-            "avg_paid_product_breadth": "Avg Paid Product Breadth",
+            "bundle_target_group": "Target Group",
+            "sellers": "Selected Sellers",
+            "avg_fees_per_seller": "Avg fees per seller",
+            "avg_paid_visibility_score": "Avg paid visibility score",
+            "avg_paid_product_breadth_score": "Avg paid product breadth score",
+            "avg_listing_volume_score": "Avg listing volume score",
+            "avg_bundle_fit_score": "Avg bundle fit score",
+            "avg_outreach_readiness_score": "Avg outreach readiness score",
         }
     )
     return format_display_table(
-        bundle_recommendation,
-        euro_columns=["Total Fees", "Avg Total Fees"],
+        bundle_targeting,
+        euro_columns=["Avg fees per seller"],
         decimal_columns=[
-            "Avg Recent Paid Usage",
-            "Avg Paid Visibility Uses",
-            "Avg Categories",
-            "Avg Paid Product Breadth",
+            "Avg paid visibility score",
+            "Avg paid product breadth score",
+            "Avg listing volume score",
+            "Avg bundle fit score",
+            "Avg outreach readiness score",
         ],
     )
+
+
+def plot_q2_bundle_score_profile(scored_sellers):
+    """Plot average bundle-fit scores for Plus vs Basic targeting groups."""
+    if plt is None:
+        raise ImportError("matplotlib is required for plotting")
+
+    comparison = q2_bundle_targeting_summary(scored_sellers).set_index("bundle_target_group")
+    score_columns = [
+        "avg_paid_visibility_score",
+        "avg_paid_product_breadth_score",
+        "avg_listing_volume_score",
+        "avg_bundle_fit_score",
+        "avg_outreach_readiness_score",
+    ]
+    labels = [
+        "Paid visibility",
+        "Paid product breadth",
+        "Listing volume",
+        "Bundle fit",
+        "Outreach readiness",
+    ]
+    y = np.arange(len(labels))
+    bar_height = 0.36
+
+    fig, ax = plt.subplots(figsize=(10, 4.2))
+    ax.barh(
+        y - bar_height / 2,
+        comparison.loc["Targeted for Plus group", score_columns],
+        height=bar_height,
+        color=PLOT_COLORS["q2"],
+        label="Plus Group",
+    )
+    ax.barh(
+        y + bar_height / 2,
+        comparison.loc["Targeted for Basic group", score_columns],
+        height=bar_height,
+        color=PLOT_COLORS["neutral"],
+        label="Basic Group",
+    )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 105)
+    ax.set_xlabel("Average percentile score")
+    ax.set_title("Signal Comparison by Seller Group")
+    ax.legend(loc="lower right")
+    clean_q2_score_profile_axis(ax)
+
+    for patch in ax.patches:
+        width = patch.get_width()
+        ax.annotate(
+            f"{width:.1f}",
+            (width, patch.get_y() + patch.get_height() / 2),
+            ha="left",
+            va="center",
+            xytext=(4, 0),
+            textcoords="offset points",
+            fontsize=8,
+        )
+    return fig, ax
+
+
+def q2_scored_sellers_export(scored_sellers):
+    """Return a seller-level scoring table for preview and CSV export."""
+    export = scored_sellers.rename(
+        columns={
+            "fee_score": "total_fees_score",
+            "growth_score": "recent_growth_score",
+        }
+    ).copy()
+
+    score_columns = [
+        "recent_paid_usage_score",
+        "consistency_score",
+        "category_breadth_score",
+        "recent_growth_score",
+        "total_fees_score",
+        "paid_visibility_score",
+        "paid_product_breadth_score",
+        "listing_volume_score",
+        "outreach_readiness_score",
+        "bundle_fit_score",
+    ]
+    export[score_columns] = export[score_columns] * 100
+
+    column_order = [
+        Q2_USER_COLUMN,
+        "outreach_readiness_score",
+        "recent_paid_usage_score",
+        "consistency_score",
+        "category_breadth_score",
+        "recent_growth_score",
+        "total_fees_score",
+        "paid_visibility_score",
+        "paid_product_breadth_score",
+        "listing_volume_score",
+        "recent_paid_usage",
+        "active_months",
+        "categories",
+        "total_ad_insertions",
+        "paid_usage_growth_ratio",
+        "total_fees",
+        "paid_product_breadth",
+        "is_outreach_ready_group",
+        "is_total_fee_group",
+        "is_targeted_for_plus",
+        "selection_group",
+        "bundle_fit_score",
+        "bundle_target_group",
+    ]
+    return export[column_order].round(2)
 
 
 # ---------------------------------------------------------------------------
