@@ -1,4 +1,4 @@
-"""Shared helpers for the data analyst notebooks.
+"""Shared helpers for the cars notebooks.
 
 The q2 notebook should read like an analysis story, while this module holds
 the repeatable mechanics: loading/cleaning, A/B summaries, display formatting,

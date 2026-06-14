@@ -3358,12 +3358,14 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
             marker="o",
             linewidth=2,
         )
+        last_complete_index = len(revenue_plot) - 1
     else:
         period_end = revenue_plot["period_start"] + pd.Timedelta(days=FREE_TRIAL_DAYS - 1)
         incomplete_period = period_end > reference_date
         first_incomplete = np.flatnonzero(incomplete_period.to_numpy())
 
         if len(first_incomplete) == 0:
+            last_complete_index = len(revenue_plot) - 1
             ax.plot(
                 x_values,
                 y_values,
@@ -3373,6 +3375,7 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
             )
         else:
             incomplete_start = first_incomplete[0]
+            last_complete_index = incomplete_start - 1
             solid_end = max(incomplete_start, 1)
             ax.plot(
                 x_values[:solid_end],
@@ -3402,6 +3405,18 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
                 va="top",
             )
             ax.margins(y=0.16)
+    if last_complete_index >= 0:
+        complete_value = y_values[last_complete_index]
+        ax.annotate(
+            f"€{complete_value / 1000:.1f}k",
+            xy=(x_values[last_complete_index], complete_value),
+            xytext=(-8, 12),
+            textcoords="offset points",
+            color=PLOT_COLORS["text"],
+            ha="right",
+            va="bottom",
+            fontweight="bold",
+        )
     ax.set_title("Modeled Paid Revenue by 4-Week Period")
     ax.set_xlabel("4-week period start")
     ax.set_ylabel("Modeled revenue (€)")
