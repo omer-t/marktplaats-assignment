@@ -1650,8 +1650,8 @@ def q3_short_eda_summary(dataframe, sellers, weekly_metrics, revenue_4w, referen
         ("Basic-first share", pct(first_bundle_mix.get("Basic", 0) / len(bundle_sellers))),
         ("Plus-first share", pct(first_bundle_mix.get("Plus", 0) / len(bundle_sellers))),
         ("Peak weekly registrations", f"{int(peak_registrations):,} in week of {peak_week:%Y-%m-%d}"),
-        ("Latest active paid sellers", f"{int(latest_week['Total active paid sellers']):,}"),
-        ("Latest active trial sellers", f"{int(latest_week['Active trial sellers']):,}"),
+        ("Latest active paid bundles", f"{int(latest_week['Total active paid sellers']):,}"),
+        ("Latest active trial bundles", f"{int(latest_week['Active trial sellers']):,}"),
         ("Current no-bundle sellers", f"{current_no_bundle:,}"),
         ("Current Plus share of paid base", pct(latest_week["Plus share of active paid sellers"])),
         ("Sellers with multiple bundle periods", f"{int(multi_interval_sellers):,}"),
@@ -1799,7 +1799,7 @@ def plot_q3_eda_bundle_mix_shift(sellers):
     ax.set_xlabel("")
     ax.set_ylabel("Share of sellers (%)")
     format_percent_axis(ax, "y")
-    ax.tick_params(axis="x", rotation=0)
+    ax.tick_params(axis="x", rotation=0, length=0)
     ax.legend(title="")
     return ax
 
@@ -1943,7 +1943,7 @@ def plot_q3_eda_open_ended_intervals(dataframe):
     ax.set_xlabel("")
     ax.set_ylabel("Rows")
     format_number_axis(ax, "y")
-    ax.tick_params(axis="x", rotation=0)
+    ax.tick_params(axis="x", rotation=0, length=0)
     ax.legend(title="")
     return ax
 
@@ -2005,17 +2005,17 @@ def q3_customer_type_eda_summary(dataframe, sellers):
         users = group.index
         paid = group["active_paid_flag"]
         current_bundle = group["current_bundle_type"]
-        active_paid_sellers = int(paid.sum())
+        active_paid_bundles = int(paid.sum())
         rows.append(
             {
                 "Customer type": customer_type,
                 "Bundle starters": len(group),
                 "Basic-first share": group["first_bundle_type"].eq("Basic").mean(),
                 "Plus-first share": group["first_bundle_type"].eq("Plus").mean(),
-                "Active paid sellers": active_paid_sellers,
-                "Plus share of active paid sellers": (
-                    (paid & current_bundle.eq("Plus")).sum() / active_paid_sellers
-                    if active_paid_sellers
+                "Active paid bundles": active_paid_bundles,
+                "Plus share of active paid bundles": (
+                    (paid & current_bundle.eq("Plus")).sum() / active_paid_bundles
+                    if active_paid_bundles
                     else np.nan
                 ),
                 "Current no-bundle share": current_bundle.eq("No bundle").mean(),
@@ -2034,12 +2034,12 @@ def q3_customer_type_eda_display_table(dataframe, sellers):
         rate_columns=[
             "Basic-first share",
             "Plus-first share",
-            "Plus share of active paid sellers",
+            "Plus share of active paid bundles",
             "Current no-bundle share",
             "Multiple bundle-period share",
             "Used Basic and Plus share",
         ],
-        integer_columns=["Bundle starters", "Active paid sellers"],
+        integer_columns=["Bundle starters", "Active paid bundles"],
     )
 
 
@@ -2070,8 +2070,8 @@ def q3_customer_type_insights(dataframe, sellers):
             {
                 "Finding": "Paid mix is nearly the same",
                 "Evidence": (
-                    f"Paid Plus share: Pro {pro['Plus share of active paid sellers']:.1%}; "
-                    f"SYI {syi['Plus share of active paid sellers']:.1%}."
+                    f"Paid Plus share: Pro {pro['Plus share of active paid bundles']:.1%}; "
+                    f"SYI {syi['Plus share of active paid bundles']:.1%}."
                 ),
                 "Interpretation": "Customer type alone does not strongly separate monetization quality.",
             },
@@ -2112,7 +2112,7 @@ def plot_q3_customer_type_comparison(dataframe, sellers):
     plot_data = summary[
         [
             "Plus-first share",
-            "Plus share of active paid sellers",
+            "Plus share of active paid bundles",
             "Current no-bundle share",
             "Used Basic and Plus share",
         ]
@@ -2120,7 +2120,7 @@ def plot_q3_customer_type_comparison(dataframe, sellers):
     plot_data = plot_data.rename(
         columns={
             "Plus-first share": "Plus-first",
-            "Plus share of active paid sellers": "Paid Plus share",
+            "Plus share of active paid bundles": "Paid Plus share",
             "Current no-bundle share": "No bundle now",
             "Used Basic and Plus share": "Used both bundles",
         }
@@ -2134,7 +2134,7 @@ def plot_q3_customer_type_comparison(dataframe, sellers):
     ax.set_xlabel("")
     ax.set_ylabel("Share of sellers (%)")
     format_percent_axis(ax, "y")
-    ax.tick_params(axis="x", rotation=0)
+    ax.tick_params(axis="x", rotation=0, length=0)
     ax.legend(title="")
     return ax
 
@@ -2271,7 +2271,7 @@ def q3_seller_snapshot(sellers):
         {
             "Metric": [
                 "Bundle starters",
-                "Currently active trial sellers",
+                "Currently active trial bundles",
                 "Currently active paid Basic sellers",
                 "Currently active paid Plus sellers",
                 "Currently inactive after bundle start",
@@ -2358,12 +2358,8 @@ def q3_modeled_bill_dates(row, sellers, reference_date):
         return []
 
     interval_end = reference_date if row["is_open_ended"] else min(row["End"], reference_date)
-    first_start = sellers.loc[row[Q3_USER_COLUMN], "first_bundle_start"]
-    first_paid_date = (
-        row["Start"] + pd.Timedelta(days=FREE_TRIAL_DAYS)
-        if row["Start"] == first_start
-        else row["Start"]
-    )
+    trial_end_date = sellers.loc[row[Q3_USER_COLUMN], "trial_end_date"]
+    first_paid_date = max(row["Start"], trial_end_date)
     if first_paid_date > interval_end:
         return []
     return list(pd.date_range(first_paid_date, interval_end, freq=f"{FREE_TRIAL_DAYS}D"))
@@ -2388,16 +2384,32 @@ def q3_modeled_revenue_events(dataframe, sellers, reference_date):
 def q3_revenue_by_4_week_period(revenue_events, launch_start):
     """Aggregate modeled paid revenue into 28-day launch periods."""
     if revenue_events.empty:
-        return pd.DataFrame(columns=["period_start", "modeled_paid_revenue_eur", "paid_billing_events"])
+        return pd.DataFrame(
+            {
+                "period_start": [launch_start],
+                "modeled_paid_revenue_eur": [0.0],
+                "paid_billing_events": [0],
+            }
+        )
 
     revenue = q3_add_revenue_period(revenue_events, launch_start)
-    return (
+    aggregated = (
         revenue.groupby("period_start")
         .agg(
             modeled_paid_revenue_eur=("modeled_paid_revenue_eur", "sum"),
             paid_billing_events=(Q3_USER_COLUMN, "count"),
         )
+    )
+    all_periods = pd.date_range(
+        launch_start,
+        aggregated.index.max(),
+        freq=f"{FREE_TRIAL_DAYS}D",
+    )
+    return (
+        aggregated.reindex(all_periods, fill_value=0)
+        .rename_axis("period_start")
         .reset_index()
+        .assign(paid_billing_events=lambda frame: frame["paid_billing_events"].astype(int))
     )
 
 
@@ -2440,7 +2452,7 @@ def q3_complete_revenue_periods(revenue_4w, reference_date):
 
 
 def q3_registrations_by_4_week_period(sellers, launch_start):
-    """Aggregate first-ever bundle registrations into 28-day launch periods."""
+    """Aggregate first bundle registrations into 28-day launch periods."""
     starters = sellers.dropna(subset=["first_bundle_start"]).copy()
     if starters.empty:
         return pd.DataFrame(columns=["period_start", "new_bundle_registrations"])
@@ -2508,8 +2520,33 @@ def q3_trials_reaching_day_28_soon(sellers, reference_date, days_ahead=14):
     )
 
 
-def q3_sales_kpis(weekly_metrics, revenue_4w, reference_date, registrations_4w=None):
-    """Return latest Sales Overview KPIs for compact dashboard display."""
+def q3_rolling_new_registrations(sellers, reference_date, days=FREE_TRIAL_DAYS):
+    """Return first-bundle registrations in the latest rolling window and prior window."""
+    starters = sellers.dropna(subset=["first_bundle_start"])
+    registration_end = starters.loc[
+        starters["first_bundle_start"] <= reference_date,
+        "first_bundle_start",
+    ].max()
+    if pd.isna(registration_end):
+        registration_end = reference_date
+    current_start = registration_end - pd.Timedelta(days=days - 1)
+    previous_start = registration_end - pd.Timedelta(days=(2 * days) - 1)
+    previous_end = current_start - pd.Timedelta(days=1)
+    current_count = starters["first_bundle_start"].between(
+        current_start,
+        registration_end,
+        inclusive="both",
+    ).sum()
+    previous_count = starters["first_bundle_start"].between(
+        previous_start,
+        previous_end,
+        inclusive="both",
+    ).sum()
+    return int(current_count), int(previous_count)
+
+
+def q3_sales_kpis(weekly_metrics, revenue_4w, reference_date, registrations_4w=None, sellers=None):
+    """Return latest Sales Overview KPIs as a single-row dashboard table."""
     latest_week = weekly_metrics.iloc[-1]
     previous_week = weekly_metrics.iloc[-2] if len(weekly_metrics) > 1 else None
     complete_revenue = q3_complete_revenue_periods(revenue_4w, reference_date)
@@ -2519,19 +2556,24 @@ def q3_sales_kpis(weekly_metrics, revenue_4w, reference_date, registrations_4w=N
     previous_complete_revenue = (
         np.nan if len(complete_revenue) < 2 else complete_revenue.iloc[-2]["modeled_paid_revenue_eur"]
     )
-    complete_registrations = (
-        pd.DataFrame()
-        if registrations_4w is None
-        else q3_complete_registration_periods(registrations_4w, reference_date)
-    )
-    latest_complete_registrations = (
-        np.nan if complete_registrations.empty else complete_registrations.iloc[-1]["new_bundle_registrations"]
-    )
-    previous_complete_registrations = (
-        np.nan
-        if len(complete_registrations) < 2
-        else complete_registrations.iloc[-2]["new_bundle_registrations"]
-    )
+    if sellers is not None:
+        latest_registrations, previous_registrations = q3_rolling_new_registrations(sellers, reference_date)
+        registration_change_suffix = "vs prior 4wk"
+    else:
+        complete_registrations = (
+            pd.DataFrame()
+            if registrations_4w is None
+            else q3_complete_registration_periods(registrations_4w, reference_date)
+        )
+        latest_registrations = (
+            np.nan if complete_registrations.empty else complete_registrations.iloc[-1]["new_bundle_registrations"]
+        )
+        previous_registrations = (
+            np.nan
+            if len(complete_registrations) < 2
+            else complete_registrations.iloc[-2]["new_bundle_registrations"]
+        )
+        registration_change_suffix = "vs prev 4wk"
 
     def change_text(current, previous, suffix):
         if previous is None or pd.isna(current) or pd.isna(previous):
@@ -2553,31 +2595,55 @@ def q3_sales_kpis(weekly_metrics, revenue_4w, reference_date, registrations_4w=N
     previous_plus_share = None if previous_week is None else previous_week["Plus share of active paid sellers"]
 
     return pd.DataFrame(
-        {
-            "KPI": [
-                "Reference date",
-                "Active paid sellers",
-                "Active trial sellers",
-                "New registrations in latest complete 4wk period",
-                "Plus share of active paid sellers",
-                "Modeled revenue in latest complete 4wk period",
-            ],
-            "Value": [
-                f"{reference_date:%Y-%m-%d}",
-                f"{int(latest_paid):,} {change_text(latest_paid, previous_paid, 'w/w')}",
-                f"{int(latest_trial):,} {change_text(latest_trial, previous_trial, 'w/w')}",
-                (
+        [
+            {
+                "Reference date": f"{reference_date:%Y-%m-%d}",
+                "Active paid bundles": f"{int(latest_paid):,} {change_text(latest_paid, previous_paid, 'w/w')}",
+                "Active trial bundles": f"{int(latest_trial):,} {change_text(latest_trial, previous_trial, 'w/w')}",
+                "New registration in 4wk": (
                     ""
-                    if pd.isna(latest_complete_registrations)
-                    else f"{int(latest_complete_registrations):,} "
-                    f"{change_text(latest_complete_registrations, previous_complete_registrations, 'vs prev 4wk')}"
+                    if pd.isna(latest_registrations)
+                    else f"{int(latest_registrations):,} "
+                    f"{change_text(latest_registrations, previous_registrations, registration_change_suffix)}"
                 ),
-                f"{pct(latest_plus_share)} {point_change_text(latest_plus_share, previous_plus_share, 'w/w')}",
-                f"{eur(latest_complete_revenue)} "
-                f"{change_text(latest_complete_revenue, previous_complete_revenue, 'vs prev 4wk')}",
-            ],
-        }
+                "Plus share of active paid bundles": (
+                    f"{pct(latest_plus_share)} {point_change_text(latest_plus_share, previous_plus_share, 'w/w')}"
+                ),
+                "Modeled revenue in latest complete 4wk period": (
+                    f"{eur(latest_complete_revenue)} "
+                    f"{change_text(latest_complete_revenue, previous_complete_revenue, 'vs prev 4wk')}"
+                ),
+            }
+        ]
     )
+
+
+def plot_q3_new_registrations_kpi_bar(sellers, reference_date):
+    """Plot latest rolling 4-week new registrations as a compact KPI bar."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    current_count, previous_count = q3_rolling_new_registrations(sellers, reference_date)
+    max_value = max(current_count, previous_count, 1)
+    _, ax = plt.subplots(figsize=(7, 1.8))
+    ax.barh(["New registration in 4wk"], [current_count], color=PLOT_COLORS["q3"])
+    ax.text(
+        current_count + max_value * 0.03,
+        0,
+        f"{current_count:,}",
+        va="center",
+        ha="left",
+        color=PLOT_COLORS["text"],
+        fontweight="bold",
+    )
+    ax.set_title("New Registration in 4wk")
+    ax.set_xlabel("Sellers")
+    ax.set_ylabel("")
+    format_number_axis(ax, "x")
+    ax.tick_params(axis="y", length=0)
+    ax.spines["left"].set_visible(False)
+    ax.margins(x=0.18)
+    return ax
 
 
 def q3_active_paid_on(dataframe, sellers, user_ids, checkpoint):
@@ -2798,7 +2864,7 @@ def q3_segment_metrics_for_series(dataframe, sellers, reference_date, segment_na
 
         current_bundle = sellers.loc[users, "current_bundle_type"]
         active_paid = sellers.loc[users, "active_paid_flag"]
-        active_paid_sellers = int(active_paid.sum())
+        active_paid_bundles = int(active_paid.sum())
         active_paid_plus = int((active_paid & current_bundle.eq("Plus")).sum())
         current_no_bundle = int(current_bundle.eq("No bundle").sum())
 
@@ -2808,10 +2874,10 @@ def q3_segment_metrics_for_series(dataframe, sellers, reference_date, segment_na
                 "Segment value": segment_value,
                 "Registrations": len(group),
                 "Day-28 paid conversion": day_28_conversion,
-                "Plus share of active paid sellers": (
-                    active_paid_plus / active_paid_sellers if active_paid_sellers else np.nan
+                "Plus share of active paid bundles": (
+                    active_paid_plus / active_paid_bundles if active_paid_bundles else np.nan
                 ),
-                "Active paid sellers": active_paid_sellers,
+                "Active paid bundles": active_paid_bundles,
                 "Current no-bundle share": current_no_bundle / len(group) if len(group) else np.nan,
             }
         )
@@ -2858,10 +2924,10 @@ def q3_segment_display_table(segment_metrics):
         segment_metrics,
         rate_columns=[
             "Day-28 paid conversion",
-            "Plus share of active paid sellers",
+            "Plus share of active paid bundles",
             "Current no-bundle share",
         ],
-        integer_columns=["Registrations", "Active paid sellers"],
+        integer_columns=["Registrations", "Active paid bundles"],
     )
 
 
@@ -2985,7 +3051,7 @@ def q3_segment_mockup_descriptions():
             {
                 "Mock visualization": "Recent change alerts",
                 "Potential merged data": "Daily or weekly segment snapshots joined to registration history",
-                "What it would show": "Sharp 4-week changes in active paid sellers, no-bundle share, or Plus share.",
+                "What it would show": "Sharp 4-week changes in active paid bundles, no-bundle share, or Plus share.",
             },
         ]
     )
@@ -3063,6 +3129,7 @@ def plot_q3_mock_smb_fit_seller_size(dummy_data=None):
     ax.tick_params(axis="x", bottom=False, labelbottom=False)
     ax.tick_params(axis="y", length=0)
     ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
     ax.margins(x=0.05)
     add_q3_dummy_data_label(ax)
     return ax
@@ -3107,7 +3174,7 @@ def format_q3_month_axis_for_weekly_bars(ax, weekly_index, month_step=1):
 
 
 def plot_q3_weekly_new_registrations(weekly_metrics):
-    """Plot first-ever weekly registrations overall and by bundle type."""
+    """Plot first bundle weekly registrations overall and by bundle type."""
     if plt is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
@@ -3124,7 +3191,7 @@ def plot_q3_weekly_new_registrations(weekly_metrics):
         color=PLOT_COLORS["q3"],
         linewidth=2,
     )
-    axes[0].set_title("Weekly New First-Ever Bundle Registrations")
+    axes[0].set_title("Weekly New First Bundle Registrations")
     axes[0].set_xlabel("")
     axes[0].set_ylabel("Sellers")
     format_number_axis(axes[0], "y")
@@ -3134,7 +3201,7 @@ def plot_q3_weekly_new_registrations(weekly_metrics):
         color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
-    axes[1].set_title("Weekly New First-Ever Bundle Registrations - by Bundle")
+    axes[1].set_title("Weekly New First Bundle Registrations - by Bundle")
     axes[1].set_xlabel("")
     axes[1].set_ylabel("Sellers")
     format_number_axis(axes[1], "y")
@@ -3142,18 +3209,24 @@ def plot_q3_weekly_new_registrations(weekly_metrics):
 
 
 def plot_q3_active_paid_sellers(weekly_metrics):
-    """Plot active paid sellers over time, split by current bundle."""
+    """Plot active paid bundles over time, split by current bundle."""
     if plt is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
-    ax = weekly_metrics[["Active paid Basic sellers", "Active paid Plus sellers"]].plot(
+    plot_data = weekly_metrics[["Active paid Basic sellers", "Active paid Plus sellers"]].rename(
+        columns={
+            "Active paid Basic sellers": "Active paid Basic bundles",
+            "Active paid Plus sellers": "Active paid Plus bundles",
+        }
+    )
+    ax = plot_data.plot(
         figsize=(11, 4),
         color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
-    ax.set_title("Active Paid Sellers")
+    ax.set_title("Active Paid Bundles")
     ax.set_xlabel("")
-    ax.set_ylabel("Sellers")
+    ax.set_ylabel("Bundles")
     format_number_axis(ax, "y")
     return ax
 
@@ -3192,9 +3265,9 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
             Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="--", label="Trial"),
         ]
     )
-    axes[0].set_title("Active Bundle Sellers")
+    axes[0].set_title("Active Bundles")
     axes[0].set_xlabel("")
-    axes[0].set_ylabel("Sellers")
+    axes[0].set_ylabel("Bundles")
     format_number_axis(axes[0], "y")
 
     plot_columns = [
@@ -3217,21 +3290,21 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
     for line, linestyle in zip(axes[1].lines, ["-", "-", "--", "--"]):
         line.set_linestyle(linestyle)
     legend_handles = [
-        Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="-", label="Paid Basic"),
-        Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="-", label="Paid Plus"),
-        Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="--", label="Trial Basic"),
-        Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="--", label="Trial Plus"),
+        Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="-", label="Paid Basic bundles"),
+        Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="-", label="Paid Plus bundles"),
+        Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="--", label="Trial Basic bundles"),
+        Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="--", label="Trial Plus bundles"),
     ]
     axes[1].legend(handles=legend_handles)
-    axes[1].set_title("Active Bundle Sellers - by Bundle")
+    axes[1].set_title("Active Bundles - by Bundle")
     axes[1].set_xlabel("")
-    axes[1].set_ylabel("Sellers")
+    axes[1].set_ylabel("Bundles")
     format_number_axis(axes[1], "y")
     return fig, axes
 
 
 def plot_q3_active_trial_sellers(weekly_metrics):
-    """Plot active trial sellers as the near-term paid pipeline."""
+    """Plot active trial bundles as the near-term paid pipeline."""
     if plt is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
@@ -3240,15 +3313,15 @@ def plot_q3_active_trial_sellers(weekly_metrics):
         color=PLOT_COLORS["q3"],
         linewidth=2,
     )
-    ax.set_title("Active Trial Sellers")
+    ax.set_title("Active Trial Bundles")
     ax.set_xlabel("")
-    ax.set_ylabel("Sellers")
+    ax.set_ylabel("Bundles")
     format_number_axis(ax, "y")
     return ax
 
 
 def plot_q3_plus_share(weekly_metrics):
-    """Plot Plus share of active paid sellers over time."""
+    """Plot Plus share of active paid bundles over time."""
     if plt is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
@@ -3277,7 +3350,7 @@ def plot_q3_plus_share(weekly_metrics):
         color=PLOT_COLORS["text"],
         fontweight="bold",
     )
-    ax.set_title("Plus Share of Active Paid Sellers")
+    ax.set_title("Plus Share of Active Paid Bundles")
     ax.set_xlabel("")
     ax.set_ylabel("Share (%)")
     ax.set_ylim(0, 100)
@@ -3299,21 +3372,28 @@ def plot_q3_sales_overview(weekly_metrics):
         color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
-    axes[0, 0].set_title("Weekly New First-Ever Bundle Registrations")
+    axes[0, 0].set_title("Weekly New First Bundle Registrations")
     axes[0, 0].set_xlabel("")
     axes[0, 0].set_ylabel("Sellers")
     format_number_axis(axes[0, 0], "y")
 
-    weekly_metrics[["Active trial sellers", "Active paid Basic sellers", "Active paid Plus sellers"]].plot(
+    active_plot = weekly_metrics[["Active trial sellers", "Active paid Basic sellers", "Active paid Plus sellers"]].rename(
+        columns={
+            "Active trial sellers": "Active trial bundles",
+            "Active paid Basic sellers": "Active paid Basic bundles",
+            "Active paid Plus sellers": "Active paid Plus bundles",
+        }
+    )
+    active_plot.plot(
         ax=axes[0, 1],
         color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
     if len(axes[0, 1].lines) > 2:
         axes[0, 1].lines[2].set_linestyle("--")
-    axes[0, 1].set_title("Active Trial and Paid Sellers")
+    axes[0, 1].set_title("Active Trial and Paid Bundles")
     axes[0, 1].set_xlabel("")
-    axes[0, 1].set_ylabel("Sellers")
+    axes[0, 1].set_ylabel("Bundles")
     format_number_axis(axes[0, 1], "y")
 
     weekly_metrics["Plus share of active paid sellers"].mul(100).plot(
@@ -3321,7 +3401,7 @@ def plot_q3_sales_overview(weekly_metrics):
         color=PLOT_COLORS["q3"],
         linewidth=2,
     )
-    axes[1, 0].set_title("Plus Share of Active Paid Sellers")
+    axes[1, 0].set_title("Plus Share of Active Paid Bundles")
     axes[1, 0].set_xlabel("")
     axes[1, 0].set_ylabel("Share (%)")
     axes[1, 0].set_ylim(0, 100)
@@ -3332,9 +3412,9 @@ def plot_q3_sales_overview(weekly_metrics):
         color=PLOT_COLORS["q3"],
         linewidth=2,
     )
-    axes[1, 1].set_title("Total Active Paid Sellers")
+    axes[1, 1].set_title("Total Active Paid Bundles")
     axes[1, 1].set_xlabel("")
-    axes[1, 1].set_ylabel("Sellers")
+    axes[1, 1].set_ylabel("Bundles")
     format_number_axis(axes[1, 1], "y")
     return fig, axes
 
@@ -3398,22 +3478,24 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
             ax.annotate(
                 "Incomplete data",
                 xy=(x_values[label_index], y_values[label_index]),
-                xytext=(0, -28),
+                xytext=(0, -18),
                 textcoords="offset points",
                 color=PLOT_COLORS["neutral"],
                 ha="center",
                 va="top",
+                annotation_clip=False,
             )
-            ax.margins(y=0.16)
+            y_max = max(y_values.max(), 1)
+            ax.set_ylim(bottom=0, top=y_max * 1.16)
     if last_complete_index >= 0:
         complete_value = y_values[last_complete_index]
         ax.annotate(
             f"€{complete_value / 1000:.1f}k",
             xy=(x_values[last_complete_index], complete_value),
-            xytext=(-8, 12),
+            xytext=(0, 12),
             textcoords="offset points",
             color=PLOT_COLORS["text"],
-            ha="right",
+            ha="center",
             va="bottom",
             fontweight="bold",
         )
@@ -3421,6 +3503,8 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
     ax.set_xlabel("4-week period start")
     ax.set_ylabel("Modeled revenue (€)")
     format_eur_axis(ax, "y")
+    if ax.get_ylim()[0] < 0:
+        ax.set_ylim(bottom=0)
     ax.set_xticks(x_values)
     ax.set_xticklabels(revenue_plot["period_label"])
     ax.tick_params(axis="x", rotation=45)
@@ -3447,7 +3531,7 @@ def plot_q3_latest_revenue_by_bundle(revenue_by_bundle, reference_date=None):
         .fillna({"modeled_paid_revenue_eur": 0, "paid_billing_events": 0})
     )
     ax = latest["modeled_paid_revenue_eur"].plot(
-        kind="bar",
+        kind="barh",
         figsize=(5.5, 3.5),
         color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         legend=False,
@@ -3457,22 +3541,22 @@ def plot_q3_latest_revenue_by_bundle(revenue_by_bundle, reference_date=None):
     for position, value in enumerate(latest["modeled_paid_revenue_eur"]):
         share = value / total_revenue if total_revenue else np.nan
         ax.text(
+            value + max_revenue * 0.03,
             position,
-            value + max_revenue * 0.04,
-            f"€{value / 1000:.1f}k\n{share:.1%}",
-            ha="center",
-            va="bottom",
+            f"€{value / 1000:.1f}k ({share:.1%})",
+            ha="left",
+            va="center",
             color=PLOT_COLORS["text"],
             fontweight="bold",
         )
-    ax.set_title(f"Latest Complete Modeled Revenue Split ({latest_period:%Y-%m-%d})")
+    ax.set_title("Latest Complete 4wk Modeled Revenue Split")
     ax.set_xlabel("")
     ax.set_ylabel("")
-    ax.tick_params(axis="x", rotation=0, length=0)
-    ax.tick_params(axis="y", left=False, labelleft=False)
+    ax.tick_params(axis="x", bottom=False, labelbottom=False)
+    ax.tick_params(axis="y", length=0)
     ax.spines["bottom"].set_visible(False)
     ax.spines["left"].set_visible(False)
-    ax.margins(y=0.18)
+    ax.margins(x=0.22)
     return ax
 
 
@@ -3508,29 +3592,6 @@ def plot_q3_cohort_metrics(cohort_metrics):
     return ax
 
 
-def q3_business_impact_placeholder_table():
-    """Return high-value dashboard modules that require additional datasets."""
-    return pd.DataFrame(
-        [
-            {
-                "Module": "Revenue impact",
-                "Business question": "Is bundle revenue incremental?",
-                "Placeholder visual": "Revenue waterfall: new bundle revenue, lost feature/CPC revenue, net impact",
-            },
-            {
-                "Module": "Seller value",
-                "Business question": "Do sellers get better outcomes?",
-                "Placeholder visual": "Indexed before/after line for leads per active ad",
-            },
-            {
-                "Module": "Sales steering",
-                "Business question": "Where should launch effort focus?",
-                "Placeholder visual": "Compact segment table by category, seller size, spend tier, and outreach batch",
-            },
-        ]
-    )
-
-
 def q3_dummy_business_impact_data():
     """Return small synthetic datasets for Business Impact visual mockups."""
     return {
@@ -3544,6 +3605,13 @@ def q3_dummy_business_impact_data():
                     "Net impact",
                 ],
                 "Value": [120_000, -28_000, -12_000, -5_000, 75_000],
+            }
+        ),
+        "seller_leads_uplift": pd.DataFrame(
+            {
+                "Week from bundle start": [-8, -4, 0, 4, 8, 12] * 2,
+                "Bundle": ["Basic"] * 6 + ["Plus"] * 6,
+                "Avg leads per seller": [8.0, 8.1, 8.0, 9.1, 9.4, 9.5, 8.4, 8.5, 8.4, 10.8, 11.2, 11.4],
             }
         ),
     }
@@ -3590,8 +3658,63 @@ def plot_q3_mock_revenue_impact_waterfall(dummy_data=None):
     return ax
 
 
+def plot_q3_mock_seller_leads_uplift(dummy_data=None):
+    """Plot dummy seller lead uplift versus pre-bundle baseline by bundle."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    data = dummy_data or q3_dummy_business_impact_data()
+    leads = data["seller_leads_uplift"].copy()
+    _, ax = plt.subplots(figsize=(7, 4))
+    for bundle, color in [("Basic", PLOT_COLORS["neutral"]), ("Plus", PLOT_COLORS["q3"])]:
+        bundle_data = leads.loc[leads["Bundle"].eq(bundle)].sort_values("Week from bundle start")
+        baseline = bundle_data.loc[bundle_data["Week from bundle start"] < 0, "Avg leads per seller"].mean()
+        bundle_data = bundle_data.assign(
+            lead_uplift=(bundle_data["Avg leads per seller"] / baseline - 1) * 100
+        )
+        ax.plot(
+            bundle_data["Week from bundle start"],
+            bundle_data["lead_uplift"],
+            color=color,
+            marker="o",
+            linewidth=2,
+            label=bundle,
+        )
+    ax.axvline(0, color=PLOT_COLORS["grid"], linewidth=1)
+    ax.axhline(0, color=PLOT_COLORS["grid"], linewidth=1)
+    ax.set_title("Avg Seller Leads Uplift vs Pre-Bundle Baseline")
+    ax.set_xlabel("Weeks from bundle start")
+    ax.set_ylabel("Lead uplift (%)")
+    format_percent_axis(ax, "y")
+    week_ticks = sorted(leads["Week from bundle start"].unique())
+    ax.set_xticks(week_ticks)
+    ax.set_xticklabels([f"{week:+.0f}".replace("+", "") for week in week_ticks])
+    for bundle, color in [("Basic", PLOT_COLORS["neutral"]), ("Plus", PLOT_COLORS["q3"])]:
+        bundle_data = leads.loc[leads["Bundle"].eq(bundle)].sort_values("Week from bundle start")
+        baseline = bundle_data.loc[bundle_data["Week from bundle start"] < 0, "Avg leads per seller"].mean()
+        bundle_data = bundle_data.assign(
+            lead_uplift=(bundle_data["Avg leads per seller"] / baseline - 1) * 100
+        )
+        latest = bundle_data.iloc[-1]
+        ax.annotate(
+            f"+{latest['lead_uplift']:.0f}%",
+            xy=(latest["Week from bundle start"], latest["lead_uplift"]),
+            xytext=(0, 10),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            color=PLOT_COLORS["text"],
+            fontweight="bold",
+        )
+    ax.legend(title="")
+    ax.margins(x=0.08, y=0.18)
+    add_q3_dummy_data_label(ax)
+    return ax
+
+
 def plot_q3_business_impact_mockups(dummy_data=None):
     """Plot business-impact mockups as separate figures."""
     return [
         plot_q3_mock_revenue_impact_waterfall(dummy_data),
+        plot_q3_mock_seller_leads_uplift(dummy_data),
     ]
