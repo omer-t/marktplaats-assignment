@@ -139,31 +139,14 @@ CATEGORY_TRANSLATIONS = {
     "Zakelijke goederen": "Business Goods",
 }
 
-# Analysis map for the main data transformations and result calculations.
-AUDIT_CRITICAL_FUNCTIONS = {
-    "q2_outreach_scoring": [
-        "read_q2_data",
-        "add_q2_row_metrics",
-        "seller_level_q2_summary",
-        "q2_window_summary",
-        "q2_paid_product_breadth",
-        "score_q2_outreach_readiness",
-        "q2_scored_sellers_export",
-    ],
-    "q3_dashboard_model": [
-        "load_q3_bundle_data",
-        "q3_dashboard_data",
-        "q3_reference_dates",
-        "q3_current_bundle_at",
-        "q3_seller_fields",
-        "q3_weekly_metrics",
-        "q3_modeled_bill_dates",
-        "q3_modeled_revenue_events",
-        "q3_revenue_by_4_week_period",
-        "q3_cohort_metrics",
-        "q3_segment_metrics",
-    ],
-}
+# Main analysis flow:
+# 1. Q2 scoring inputs: read_q2_data, add_q2_row_metrics,
+#    q2_seller_level_summary, q2_window_summary, q2_paid_product_breadth.
+# 2. Q2 selection output: q2_score_outreach_readiness, q2_scored_sellers_export.
+# 3. Q3 dashboard model: load_q3_bundle_data, q3_dashboard_data,
+#    q3_seller_fields, q3_weekly_metrics, q3_modeled_revenue_events.
+# 4. Q3 outcomes: q3_revenue_by_4_week_period, q3_cohort_metrics,
+#    q3_segment_metrics.
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +171,13 @@ def format_euros(value):
     if pd.isna(value):
         return pd.NA
     return f"€{value:,.0f}"
+
+
+def format_euros_k(value):
+    """Format a numeric euro value in thousands for compact chart labels."""
+    if pd.isna(value):
+        return pd.NA
+    return f"€{value / 1_000:,.1f}k"
 
 
 def eur(value):
@@ -317,7 +307,7 @@ def readable_category_label(category_name):
     translation = CATEGORY_TRANSLATIONS.get(category_name)
     if not translation:
         return category_name
-    return f"{category_name} ({translation})"
+    return f"{category_name}\n({translation})"
 
 
 def format_number_axis(ax, axis="x"):
@@ -333,12 +323,38 @@ def format_number_axis(ax, axis="x"):
     return ax
 
 
+def format_number_k_axis(ax, axis="x"):
+    """Format a numeric chart axis in thousands."""
+    if FuncFormatter is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    formatter = FuncFormatter(lambda value, _: f"{value / 1_000:,.0f}k")
+    if axis in ("x", "both"):
+        ax.xaxis.set_major_formatter(formatter)
+    if axis in ("y", "both"):
+        ax.yaxis.set_major_formatter(formatter)
+    return ax
+
+
 def format_eur_axis(ax, axis="x"):
     """Format a numeric chart axis as whole euros."""
     if FuncFormatter is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
     formatter = FuncFormatter(lambda value, _: f"€{value:,.0f}")
+    if axis in ("x", "both"):
+        ax.xaxis.set_major_formatter(formatter)
+    if axis in ("y", "both"):
+        ax.yaxis.set_major_formatter(formatter)
+    return ax
+
+
+def format_eur_k_axis(ax, axis="x"):
+    """Format a numeric chart axis as euros in thousands."""
+    if FuncFormatter is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    formatter = FuncFormatter(lambda value, _: f"€{value / 1_000:,.0f}k")
     if axis in ("x", "both"):
         ax.xaxis.set_major_formatter(formatter)
     if axis in ("y", "both"):
@@ -395,10 +411,11 @@ def add_horizontal_bar_labels(ax, fmt="{:,.0f}", padding=4):
     return ax
 
 
-def add_horizontal_bar_text_labels(ax, labels, padding=4):
+def add_horizontal_bar_text_labels(ax, labels, padding=4, x_values=None):
     """Add custom text labels to the right of horizontal bars."""
-    for patch, label in zip(ax.patches, labels):
-        width = patch.get_width()
+    x_values = x_values if x_values is not None else [patch.get_width() for patch in ax.patches]
+    for patch, label, x_value in zip(ax.patches, labels, x_values):
+        width = x_value
         if pd.isna(width):
             continue
         ax.annotate(
@@ -546,7 +563,7 @@ def q2_monthly_summary(dataframe):
     )
 
 
-def seller_level_q2_summary(dataframe):
+def q2_seller_level_summary(dataframe):
     """Aggregate seller-month-category rows to one row per seller.
 
     This is the base table for outreach prioritization: totals measure scale,
@@ -587,6 +604,11 @@ def seller_level_q2_summary(dataframe):
     return summary
 
 
+def seller_level_q2_summary(dataframe):
+    """Backward-compatible alias for `q2_seller_level_summary`."""
+    return q2_seller_level_summary(dataframe)
+
+
 def add_percentile_score(dataframe, columns, score_column="priority_score"):
     """Create a simple average percentile score from selected numeric columns."""
     scored = dataframe.copy()
@@ -610,7 +632,7 @@ def segment_by_quantiles(dataframe, column, labels=("Low", "Medium", "High")):
     return data
 
 
-def top_categories(dataframe, value_column="total_fees", top_n=10):
+def q2_top_categories(dataframe, value_column="total_fees", top_n=10):
     """Summarize Q2 activity by category for compact exploratory charts."""
     data = add_q2_row_metrics(dataframe)
     return (
@@ -625,6 +647,11 @@ def top_categories(dataframe, value_column="total_fees", top_n=10):
         .head(top_n)
         .reset_index(drop=True)
     )
+
+
+def top_categories(dataframe, value_column="total_fees", top_n=10):
+    """Backward-compatible alias for `q2_top_categories`."""
+    return q2_top_categories(dataframe, value_column=value_column, top_n=top_n)
 
 
 def q2_seller_summary_describe(seller_summary):
@@ -777,6 +804,43 @@ def style_minimal_horizontal_bar(ax):
     return ax
 
 
+def apply_multisize_category_labels(ax, categories, dutch_size=9.5, english_size=8):
+    """Draw category labels with smaller English translations under Dutch names."""
+    labels = [readable_category_label(category).split("\n", 1) for category in categories]
+    y_positions = ax.get_yticks()
+    ax.set_yticklabels([])
+
+    for y_position, label_parts in zip(y_positions, labels):
+        dutch = label_parts[0]
+        english = label_parts[1] if len(label_parts) > 1 else ""
+        ax.annotate(
+            dutch,
+            xy=(0, y_position),
+            xycoords=ax.get_yaxis_transform(),
+            xytext=(-8, 4),
+            textcoords="offset points",
+            ha="right",
+            va="center",
+            fontsize=dutch_size,
+            color=PLOT_COLORS["muted_text"],
+            annotation_clip=False,
+        )
+        if english:
+            ax.annotate(
+                english,
+                xy=(0, y_position),
+                xycoords=ax.get_yaxis_transform(),
+                xytext=(-8, -8),
+                textcoords="offset points",
+                ha="right",
+                va="center",
+                fontsize=english_size,
+                color=PLOT_COLORS["muted_text"],
+                annotation_clip=False,
+            )
+    return ax
+
+
 def plot_q2_monthly_overview(monthly_summary, anomaly_month="2023-11-01"):
     """Plot monthly sellers, ad insertions, and fees."""
     if plt is None:
@@ -797,10 +861,11 @@ def plot_q2_monthly_overview(monthly_summary, anomaly_month="2023-11-01"):
     axes[2].set_ylabel("Fees")
     axes[2].set_xlabel("Month")
 
+    format_number_axis(axes[0], axis="y")
+    format_number_k_axis(axes[1], axis="y")
+    format_eur_k_axis(axes[2], axis="y")
     for ax in axes:
-        format_number_axis(ax, axis="y")
         ax.grid(axis="y", alpha=0.3)
-    format_eur_axis(axes[2], axis="y")
 
     anomaly_ads = monthly_summary.loc[monthly_summary[Q2_DATE_COLUMN].eq(anomaly_month), "total_ad_insertions"].iloc[0]
     anomaly_fees = monthly_summary.loc[monthly_summary[Q2_DATE_COLUMN].eq(anomaly_month), "total_fees"].iloc[0]
@@ -852,11 +917,11 @@ def plot_q2_anomaly_comparison(monthly_summary, monthly_without_seller, anomaly_
     axes[1].set_ylabel("Fees")
     axes[1].set_xlabel("Month")
 
+    format_number_k_axis(axes[0], axis="y")
+    format_eur_k_axis(axes[1], axis="y")
     for ax in axes:
-        format_number_axis(ax, axis="y")
         ax.grid(axis="y", alpha=0.3)
         ax.legend()
-    format_eur_axis(axes[1], axis="y")
 
     fig.tight_layout()
     return fig, axes
@@ -896,15 +961,65 @@ def plot_q2_combined_anomaly_overview(monthly_summary, monthly_without_seller, a
     axes[2].set_ylabel("Fees")
     axes[2].set_xlabel("Month")
 
+    format_number_axis(axes[0], axis="y")
+    format_number_k_axis(axes[1], axis="y")
+    format_eur_k_axis(axes[2], axis="y")
     for ax in axes:
-        format_number_axis(ax, axis="y")
         ax.grid(axis="y", alpha=0.3)
     for ax in axes[1:]:
         ax.legend()
-    format_eur_axis(axes[2], axis="y")
 
     fig.tight_layout()
     return fig, axes
+
+
+def plot_q2_activity_mix(dataframe):
+    """Plot activity count mix across free ads and paid marketplace actions."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    activity_columns = existing_columns(dataframe, ["N_FREE_AD_INSERTIONS", "N_PAID_AD_INSERTIONS"] + FEATURE_COUNT_COLUMNS)
+    activity_mix = dataframe[activity_columns].sum().sort_values()
+    labels = [readable_metric_label(column) for column in activity_mix.index]
+    bar_labels = [f"{value / 1_000:,.1f}k" for value in activity_mix.values]
+
+    fig, ax = plt.subplots(figsize=(8.5, 4.2))
+    ax.barh(labels, activity_mix.values, color=PLOT_COLORS["q2"])
+    ax.set_title("Activity Count by Product Type")
+    add_horizontal_bar_text_labels(ax, bar_labels)
+    style_minimal_horizontal_bar(ax)
+    fig.tight_layout()
+    return fig, ax
+
+
+def plot_q2_activity_mix_stacked_anomaly(dataframe, anomaly_seller_id=65950787):
+    """Plot activity count mix with the anomaly seller stacked over all other sellers."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    activity_columns = existing_columns(dataframe, ["N_FREE_AD_INSERTIONS", "N_PAID_AD_INSERTIONS"] + FEATURE_COUNT_COLUMNS)
+    activity_mix = dataframe[activity_columns].sum().sort_values()
+    anomaly_data = dataframe[dataframe[Q2_USER_COLUMN].eq(anomaly_seller_id)]
+    anomaly_activity_mix = anomaly_data[activity_columns].sum().reindex(activity_mix.index).fillna(0)
+    non_anomaly_activity_mix = activity_mix.to_numpy() - anomaly_activity_mix.to_numpy()
+    labels = [readable_metric_label(column) for column in activity_mix.index]
+    bar_labels = [f"{value / 1_000:,.1f}k" for value in activity_mix.values]
+
+    fig, ax = plt.subplots(figsize=(8.5, 4.2))
+    ax.barh(labels, non_anomaly_activity_mix, color=PLOT_COLORS["q2"], label="All other sellers")
+    ax.barh(
+        labels,
+        anomaly_activity_mix.to_numpy(),
+        left=non_anomaly_activity_mix,
+        color=PLOT_COLORS["neutral"],
+        label=f"Seller {anomaly_seller_id}",
+    )
+    ax.set_title("Activity Count by Product Type")
+    add_horizontal_bar_text_labels(ax, bar_labels, x_values=activity_mix.to_numpy())
+    style_minimal_horizontal_bar(ax)
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    return fig, ax
 
 
 def plot_q2_top_categories_by_fees(category_summary):
@@ -913,14 +1028,16 @@ def plot_q2_top_categories_by_fees(category_summary):
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
     top_category_fees = category_summary.head(10).sort_values("total_fees")
-    top_category_labels = top_category_fees[Q2_CATEGORY_COLUMN].map(readable_category_label)
+    y = np.arange(len(top_category_fees))
     total_fees = category_summary["total_fees"].sum()
     bar_labels = [
-        f"€{value:,.0f} ({value / total_fees:.1%})"
+        f"{format_euros_k(value)} ({value / total_fees:.1%})"
         for value in top_category_fees["total_fees"]
     ]
     fig, ax = plt.subplots(figsize=(11, 5.5))
-    ax.barh(top_category_labels, top_category_fees["total_fees"], color=PLOT_COLORS["primary"])
+    ax.barh(y, top_category_fees["total_fees"], color=PLOT_COLORS["primary"])
+    ax.set_yticks(y)
+    apply_multisize_category_labels(ax, top_category_fees[Q2_CATEGORY_COLUMN])
     ax.set_title("Top Categories by Fees")
     add_horizontal_bar_text_labels(ax, bar_labels)
     style_minimal_horizontal_bar(ax)
@@ -936,7 +1053,7 @@ def plot_q2_fee_mix(dataframe):
 
     fee_mix = dataframe[existing_columns(dataframe, FEE_COLUMNS)].sum().sort_values()
     total_fees = fee_mix.sum()
-    bar_labels = [f"€{value:,.0f} ({value / total_fees:.1%})" for value in fee_mix.values]
+    bar_labels = [f"{format_euros_k(value)} ({value / total_fees:.1%})" for value in fee_mix.values]
     fee_mix.index = [readable_metric_label(column) for column in fee_mix.index]
     fig, ax = plt.subplots(figsize=(9, 4.5))
     ax.barh(fee_mix.index, fee_mix.values, color=PLOT_COLORS["q2"])
@@ -945,6 +1062,103 @@ def plot_q2_fee_mix(dataframe):
     style_minimal_horizontal_bar(ax)
     fig.tight_layout()
     return fig, ax
+
+
+def plot_q2_fee_breakdown(category_summary, dataframe):
+    """Plot top fee categories and paid-product fee mix as one compact figure."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.2))
+
+    top_category_fees = category_summary.head(10).sort_values("total_fees")
+    y = np.arange(len(top_category_fees))
+    category_total_fees = category_summary["total_fees"].sum()
+    category_bar_labels = [
+        f"{format_euros_k(value)} ({value / category_total_fees:.1%})"
+        for value in top_category_fees["total_fees"]
+    ]
+    axes[0].barh(y, top_category_fees["total_fees"], color=PLOT_COLORS["primary"])
+    axes[0].set_yticks(y)
+    apply_multisize_category_labels(axes[0], top_category_fees[Q2_CATEGORY_COLUMN])
+    axes[0].set_title("Top Categories by Fees")
+    add_horizontal_bar_text_labels(axes[0], category_bar_labels)
+    style_minimal_horizontal_bar(axes[0])
+
+    fee_mix = dataframe[existing_columns(dataframe, FEE_COLUMNS)].sum().sort_values()
+    product_total_fees = fee_mix.sum()
+    product_bar_labels = [f"{format_euros_k(value)} ({value / product_total_fees:.1%})" for value in fee_mix.values]
+    fee_mix.index = [readable_metric_label(column) for column in fee_mix.index]
+    axes[1].barh(fee_mix.index, fee_mix.values, color=PLOT_COLORS["q2"])
+    axes[1].set_title("Fee Mix by Paid Product")
+    add_horizontal_bar_text_labels(axes[1], product_bar_labels)
+    style_minimal_horizontal_bar(axes[1])
+
+    fig.tight_layout(w_pad=4)
+    fig.subplots_adjust(left=0.25, right=0.98)
+    return fig, axes
+
+
+def plot_q2_fee_breakdown_stacked_anomaly(category_summary, dataframe, anomaly_seller_id=65950787):
+    """Plot fee breakdown with the anomaly seller stacked over all other sellers."""
+    if plt is None:
+        raise ModuleNotFoundError("matplotlib is required for plotting helpers")
+
+    data = add_q2_row_metrics(dataframe)
+    anomaly_data = data[data[Q2_USER_COLUMN].eq(anomaly_seller_id)]
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.2))
+
+    top_category_fees = category_summary.head(10).sort_values("total_fees")
+    y = np.arange(len(top_category_fees))
+    category_total_fees = category_summary["total_fees"].sum()
+    category_totals = top_category_fees["total_fees"]
+    anomaly_category_fees = (
+        anomaly_data.groupby(Q2_CATEGORY_COLUMN)["total_fees"]
+        .sum()
+        .reindex(top_category_fees[Q2_CATEGORY_COLUMN])
+        .fillna(0)
+    )
+    non_anomaly_category_fees = category_totals.to_numpy() - anomaly_category_fees.to_numpy()
+    category_bar_labels = [
+        f"{format_euros_k(value)} ({value / category_total_fees:.1%})"
+        for value in category_totals
+    ]
+    axes[0].barh(y, non_anomaly_category_fees, color=PLOT_COLORS["primary"], label="All other sellers")
+    axes[0].barh(
+        y,
+        anomaly_category_fees.to_numpy(),
+        left=non_anomaly_category_fees,
+        color=PLOT_COLORS["neutral"],
+        label=f"Seller {anomaly_seller_id}",
+    )
+    axes[0].set_yticks(y)
+    apply_multisize_category_labels(axes[0], top_category_fees[Q2_CATEGORY_COLUMN])
+    axes[0].set_title("Top Categories by Fees")
+    add_horizontal_bar_text_labels(axes[0], category_bar_labels, x_values=category_totals)
+    style_minimal_horizontal_bar(axes[0])
+
+    fee_mix = dataframe[existing_columns(dataframe, FEE_COLUMNS)].sum().sort_values()
+    anomaly_fee_mix = anomaly_data[existing_columns(anomaly_data, FEE_COLUMNS)].sum().reindex(fee_mix.index).fillna(0)
+    non_anomaly_fee_mix = fee_mix.to_numpy() - anomaly_fee_mix.to_numpy()
+    product_total_fees = fee_mix.sum()
+    product_bar_labels = [f"{format_euros_k(value)} ({value / product_total_fees:.1%})" for value in fee_mix.values]
+    fee_mix.index = [readable_metric_label(column) for column in fee_mix.index]
+    axes[1].barh(fee_mix.index, non_anomaly_fee_mix, color=PLOT_COLORS["q2"], label="All other sellers")
+    axes[1].barh(
+        fee_mix.index,
+        anomaly_fee_mix.to_numpy(),
+        left=non_anomaly_fee_mix,
+        color=PLOT_COLORS["neutral"],
+        label=f"Seller {anomaly_seller_id}",
+    )
+    axes[1].set_title("Fee Mix by Paid Product")
+    add_horizontal_bar_text_labels(axes[1], product_bar_labels, x_values=fee_mix.to_numpy())
+    style_minimal_horizontal_bar(axes[1])
+    axes[1].legend(loc="lower right")
+
+    fig.tight_layout(w_pad=4)
+    fig.subplots_adjust(left=0.25, right=0.98)
+    return fig, axes
 
 
 def plot_q2_fee_concentration(seller_summary):
@@ -1018,7 +1232,7 @@ def q2_paid_product_breadth(dataframe):
     )
 
 
-def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
+def q2_score_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
     """Score sellers for outreach using recency, breadth, consistency, growth, and fees.
 
     Percentile ranks allow signals with different units to be averaged without
@@ -1027,7 +1241,7 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
     data = add_q2_row_metrics(dataframe)
 
     if seller_summary is None:
-        seller_summary = seller_level_q2_summary(data)
+        seller_summary = q2_seller_level_summary(data)
 
     # Compare the latest six months with the preceding six months for recency
     # and growth signals. The final month is data-driven, not hard-coded.
@@ -1123,11 +1337,21 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
     scored["is_targeted_for_plus"] = (
         scored["is_outreach_ready_group"] & scored["bundle_fit_score"].ge(bundle_fit_cutoff)
     )
-    scored["bundle_target_group"] = np.where(
-        scored["is_targeted_for_plus"], "Targeted for Plus group", "Targeted for Basic group"
+    scored["bundle_target_group"] = np.select(
+        [
+            scored["is_targeted_for_plus"],
+            scored["is_outreach_ready_group"],
+        ],
+        ["Targeted for Plus group", "Targeted for Basic group"],
+        default="Not outreach ready",
     )
 
     return scored.sort_values("outreach_readiness_score", ascending=False).reset_index(drop=True)
+
+
+def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
+    """Backward-compatible alias for `q2_score_outreach_readiness`."""
+    return q2_score_outreach_readiness(dataframe, seller_summary=seller_summary, top_share=top_share)
 
 
 def q2_method_comparison(scored_sellers):
@@ -1534,7 +1758,7 @@ def read_q3_data(data_path=Q3_CSV_PATH):
     return dataframe
 
 
-def add_subscription_metrics(dataframe, as_of_date=None):
+def q3_add_subscription_metrics(dataframe, as_of_date=None):
     """Add reusable subscription flags and estimated first-payment metrics."""
     data = dataframe.copy()
     if as_of_date is None:
@@ -1553,12 +1777,17 @@ def add_subscription_metrics(dataframe, as_of_date=None):
     return data
 
 
+def add_subscription_metrics(dataframe, as_of_date=None):
+    """Backward-compatible alias for `q3_add_subscription_metrics`."""
+    return q3_add_subscription_metrics(dataframe, as_of_date=as_of_date)
+
+
 # Q3 legacy summary helpers retained for notebook reuse
 
 
-def subscription_kpi_summary(dataframe, as_of_date=None):
+def q3_subscription_kpi_summary(dataframe, as_of_date=None):
     """Return a compact KPI table for the Q3 sales dashboard."""
-    data = add_subscription_metrics(dataframe, as_of_date=as_of_date)
+    data = q3_add_subscription_metrics(dataframe, as_of_date=as_of_date)
     rows = [
         ("registrations", len(data)),
         ("unique_sellers", data[Q3_USER_COLUMN].nunique()),
@@ -1569,7 +1798,12 @@ def subscription_kpi_summary(dataframe, as_of_date=None):
     return pd.DataFrame(rows, columns=["metric", "value"])
 
 
-def monthly_registrations(dataframe):
+def subscription_kpi_summary(dataframe, as_of_date=None):
+    """Backward-compatible alias for `q3_subscription_kpi_summary`."""
+    return q3_subscription_kpi_summary(dataframe, as_of_date=as_of_date)
+
+
+def q3_monthly_registrations(dataframe):
     """Count new bundle registrations by month and bundle."""
     data = dataframe.copy()
     data["start_month"] = data["Start"].dt.to_period("M").dt.to_timestamp()
@@ -1582,7 +1816,12 @@ def monthly_registrations(dataframe):
     )
 
 
-def bundle_mix(dataframe, group_column="Bundle"):
+def monthly_registrations(dataframe):
+    """Backward-compatible alias for `q3_monthly_registrations`."""
+    return q3_monthly_registrations(dataframe)
+
+
+def q3_bundle_mix(dataframe, group_column="Bundle"):
     """Return count and share by bundle or customer type."""
     summary = (
         dataframe[group_column]
@@ -1592,6 +1831,11 @@ def bundle_mix(dataframe, group_column="Bundle"):
     )
     summary["share"] = summary["registrations"] / summary["registrations"].sum()
     return summary
+
+
+def bundle_mix(dataframe, group_column="Bundle"):
+    """Backward-compatible alias for `q3_bundle_mix`."""
+    return q3_bundle_mix(dataframe, group_column=group_column)
 
 
 Q3_EXPECTED_COLUMNS = ["User ID", "Customer type", "Bundle", "Start", "End"]
@@ -3024,8 +3268,14 @@ def q3_segment_metrics(dataframe, sellers, launch_start, reference_date):
 
 def q3_segment_display_table(segment_metrics):
     """Return a formatted segment diagnosis table for notebook display."""
+    display_metrics = segment_metrics.loc[
+        ~(
+            segment_metrics["Segment"].eq("Current bundle status")
+            & segment_metrics["Segment value"].eq("No bundle")
+        )
+    ].reset_index(drop=True)
     return q3_format_rate_table(
-        segment_metrics,
+        display_metrics,
         rate_columns=[
             "Day-28 paid conversion",
             "Plus share of active paid bundles",

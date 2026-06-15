@@ -113,28 +113,14 @@ NUMERIC_BALANCE_AXIS_LABELS = {
     "vermogen": "Vermogen (Power)",
 }
 
-# Analysis map for the main data transformations and result calculations.
-AUDIT_CRITICAL_FUNCTIONS = {
-    "data_preparation": ["read_ab_test_data", "prepare_ab_data", "prepare_insight_data"],
-    "ab_result": ["lead_outcome_summary", "lead_rate_lift", "lead_rate_inference"],
-    "validity_checks": [
-        "group_size_summary",
-        "assignment_srm_summary",
-        "lead_metric_quality",
-        "missing_lead_metric_sensitivity",
-        "duplicate_id_sensitivity",
-        "numeric_balance_summary",
-        "categorical_balance_overview",
-    ],
-    "segment_and_q3_insights": [
-        "add_segments",
-        "segment_outcome_summary",
-        "lead_channel_mix",
-        "lead_concentration_summary",
-        "segment_insight_summary",
-        "lifecycle_summary",
-    ],
-}
+# Main analysis flow:
+# 1. Load and prepare data: read_ab_test_data, prepare_ab_data, prepare_insight_data.
+# 2. Measure A/B outcome: lead_outcome_summary, lead_rate_lift, lead_rate_inference.
+# 3. Check validity: assignment_srm_summary, lead_metric_quality,
+#    missing_lead_metric_sensitivity, duplicated_ad_id_sensitivity,
+#    numeric_balance_summary, categorical_balance_overview.
+# 4. Describe segments: add_segments, segment_outcome_summary,
+#    lead_channel_mix, lead_concentration_summary, segment_insight_summary.
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +140,7 @@ def pct(series_or_number):
     return format_percentage(series_or_number)
 
 
-def apply_plot_style():
+def set_plot_style():
     """Apply the shared notebook visual style for charts and exports."""
     plt.rcParams.update(
         {
@@ -176,6 +162,11 @@ def apply_plot_style():
             "axes.labelsize": 10,
         }
     )
+
+
+def apply_plot_style():
+    """Backward-compatible alias for `set_plot_style`."""
+    set_plot_style()
 
 
 def infer_numeric_dtype(series):
@@ -603,7 +594,7 @@ def lead_rate_inference(dataframe):
     )
 
 
-def duplicate_id_sensitivity(dataframe):
+def duplicated_ad_id_sensitivity(dataframe):
     """Check whether duplicated ad IDs drive the measured A/B lift."""
     without_duplicate_ids = dataframe.loc[~dataframe["src_ad_id"].duplicated(keep=False)].copy()
     dropped_rows = len(dataframe) - len(without_duplicate_ids)
@@ -641,6 +632,11 @@ def duplicate_id_sensitivity(dataframe):
             ],
         }
     )
+
+
+def duplicate_id_sensitivity(dataframe):
+    """Backward-compatible alias for `duplicated_ad_id_sensitivity`."""
+    return duplicated_ad_id_sensitivity(dataframe)
 
 
 def lead_distribution_summary(dataframe):
@@ -1613,7 +1609,7 @@ def plot_lead_profile_differences(lead_profile):
 
 def plot_duplicate_id_sensitivity(dataframe):
     """Plot whether duplicate-ID removal changes the lead-rate result."""
-    sensitivity = duplicate_id_sensitivity(dataframe).set_index("metric").loc[["A lead rate", "B lead rate"]]
+    sensitivity = duplicated_ad_id_sensitivity(dataframe).set_index("metric").loc[["A lead rate", "B lead rate"]]
     sensitivity = sensitivity.rename(index={"A lead rate": "A", "B lead rate": "B"}).T
     sensitivity = sensitivity.rename(
         index={
