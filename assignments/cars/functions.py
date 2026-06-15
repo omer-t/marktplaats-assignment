@@ -1,8 +1,6 @@
-"""Shared helpers for the cars notebooks.
+"""Shared helpers for the cars analysis notebooks.
 
-The q2 notebook should read like an analysis story, while this module holds
-the repeatable mechanics: loading/cleaning, A/B summaries, display formatting,
-and plotting.
+Includes data loading, cleaning, A/B summaries, display formatting, and plots.
 """
 
 from pathlib import Path
@@ -84,7 +82,24 @@ SEGMENT_SOURCE_COLUMNS = {
     "car_age_band": "car_age",
     "photo_count_band": "photo_cnt",
 }
-PLOT_COLORS = {"A": "#4C78A8", "B": "#F58518", "diff": "#54A24B", "neutral": "#8A8F98"}
+PLOT_COLORS = {
+    "A": "#3B6EA8",
+    "B": "#D65F3D",
+    "diff": "#2F8F6B",
+    "neutral": "#7A8491",
+    "accent": "#8E6BBE",
+    "grid": "#D9DEE7",
+    "axis": "#AEB6C2",
+    "text": "#222831",
+    "background": "#FFFFFF",
+}
+PLOT_COLOR_CYCLE = [
+    PLOT_COLORS["A"],
+    PLOT_COLORS["B"],
+    PLOT_COLORS["diff"],
+    PLOT_COLORS["accent"],
+    PLOT_COLORS["neutral"],
+]
 NUMERIC_BALANCE_AXIS_LABELS = {
     "aantaldeuren": "Aantal Deuren (Doors)",
     "aantalstoelen": "Aantal Stoelen (Seats)",
@@ -98,17 +113,69 @@ NUMERIC_BALANCE_AXIS_LABELS = {
     "vermogen": "Vermogen (Power)",
 }
 
+# Analysis map for the main data transformations and result calculations.
+AUDIT_CRITICAL_FUNCTIONS = {
+    "data_preparation": ["read_ab_test_data", "prepare_ab_data", "prepare_insight_data"],
+    "ab_result": ["lead_outcome_summary", "lead_rate_lift", "lead_rate_inference"],
+    "validity_checks": [
+        "group_size_summary",
+        "assignment_srm_summary",
+        "lead_metric_quality",
+        "missing_lead_metric_sensitivity",
+        "duplicate_id_sensitivity",
+        "numeric_balance_summary",
+        "categorical_balance_overview",
+    ],
+    "segment_and_q3_insights": [
+        "add_segments",
+        "segment_outcome_summary",
+        "lead_channel_mix",
+        "lead_concentration_summary",
+        "segment_insight_summary",
+        "lifecycle_summary",
+    ],
+}
+
 
 # ---------------------------------------------------------------------------
 # General utilities
 # ---------------------------------------------------------------------------
 
 
-def pct(series_or_number):
+def format_percentage(series_or_number):
     """Format shares consistently for readable notebook/script output."""
     if pd.isna(series_or_number):
         return pd.NA
     return f"{series_or_number:.2%}"
+
+
+def pct(series_or_number):
+    """Backward-compatible short alias for percentage formatting."""
+    return format_percentage(series_or_number)
+
+
+def apply_plot_style():
+    """Apply the shared notebook visual style for charts and exports."""
+    plt.rcParams.update(
+        {
+            "axes.prop_cycle": plt.cycler(color=PLOT_COLOR_CYCLE),
+            "figure.facecolor": PLOT_COLORS["background"],
+            "axes.facecolor": PLOT_COLORS["background"],
+            "savefig.facecolor": PLOT_COLORS["background"],
+            "axes.edgecolor": PLOT_COLORS["axis"],
+            "axes.labelcolor": PLOT_COLORS["text"],
+            "axes.titlecolor": PLOT_COLORS["text"],
+            "text.color": PLOT_COLORS["text"],
+            "xtick.color": PLOT_COLORS["text"],
+            "ytick.color": PLOT_COLORS["text"],
+            "grid.color": PLOT_COLORS["grid"],
+            "grid.linewidth": 0.8,
+            "legend.frameon": False,
+            "font.size": 10,
+            "axes.titlesize": 12,
+            "axes.labelsize": 10,
+        }
+    )
 
 
 def infer_numeric_dtype(series):
@@ -156,11 +223,17 @@ def existing_columns(dataframe, requested_columns):
 
 
 def prepare_ab_data(dataframe):
-    """Keep valid A/B rows and add the primary lead KPI plus derived fields."""
+    """Create the A/B analysis table.
+
+    Rows outside groups A/B are excluded from the experiment comparison, missing
+    lead-event counts are treated as zero events, and the primary KPI is
+    `has_any_lead`.
+    """
     ab_data = dataframe.loc[dataframe["group"].isin(VALID_GROUPS)].copy()
     excluded_data = dataframe.loc[~dataframe["group"].isin(VALID_GROUPS)].copy()
 
     metric_columns = existing_columns(ab_data, METRIC_COLUMNS)
+    # Primary outcome: one ad is successful if any lead channel records activity.
     ab_data[metric_columns] = ab_data[metric_columns].fillna(0)
     ab_data["has_any_lead"] = ab_data[metric_columns].gt(0).any(axis=1)
     ab_data["total_leads"] = ab_data[metric_columns].sum(axis=1)
@@ -173,7 +246,11 @@ def prepare_ab_data(dataframe):
 
 
 def prepare_insight_data(dataframe):
-    """Prepare all rows for descriptive q3 lead and segment analysis."""
+    """Prepare all rows for descriptive q3 lead and segment analysis.
+
+    Unlike `prepare_ab_data`, this keeps unassigned rows because q3 describes
+    marketplace lead behavior rather than experiment lift.
+    """
     insight_data = dataframe.copy()
     metric_columns = existing_columns(insight_data, METRIC_COLUMNS)
     insight_data[metric_columns] = insight_data[metric_columns].fillna(0)
@@ -280,6 +357,11 @@ def duplicated_ad_id_differences(dataframe, columns=IMPORTANT_COLUMNS):
     return pd.DataFrame(rows)
 
 
+# ---------------------------------------------------------------------------
+# Assignment integrity and lead metric checks
+# ---------------------------------------------------------------------------
+
+
 def group_size_summary(dataframe):
     """Count rows by assignment status and compute each row share."""
     assignment_status = dataframe["group"].where(dataframe["group"].isin(VALID_GROUPS), "Unassigned")
@@ -351,7 +433,7 @@ def lead_metric_quality(dataframe):
 
 
 def missing_lead_metric_sensitivity(raw_data):
-    """Compare primary lift with missing lead metrics filled as zero vs excluded."""
+    """Check whether the missing-as-zero KPI choice changes the A/B conclusion."""
     metric_columns = existing_columns(raw_data, METRIC_COLUMNS)
     primary_ab_data, _ = prepare_ab_data(raw_data)
     complete_raw_data = raw_data.loc[
@@ -396,8 +478,17 @@ def missing_lead_metric_sensitivity(raw_data):
     )
 
 
+# ---------------------------------------------------------------------------
+# A/B outcome measurement
+# ---------------------------------------------------------------------------
+
+
 def lead_outcome_summary(dataframe):
-    """Aggregate the primary and supporting lead outcomes by A/B group."""
+    """Aggregate primary and supporting lead outcomes by A/B group.
+
+    This is the source table for the result: `lead_rate` is the share of ads
+    with at least one lead, while channel averages show where the lift comes from.
+    """
     return (
         dataframe.groupby("group")
         .agg(
@@ -416,7 +507,7 @@ def lead_outcome_summary(dataframe):
 
 
 def lead_rate_lift(dataframe):
-    """Compute the B-minus-A lead-rate lift and an approximate 95% CI."""
+    """Compute B-minus-A lead-rate lift and an unpooled normal-approximation CI."""
     by_group = lead_outcome_summary(dataframe).set_index("group")
     a = by_group.loc["A"]
     b = by_group.loc["B"]
@@ -450,7 +541,11 @@ def lead_rate_lift(dataframe):
 
 
 def lead_rate_inference(dataframe):
-    """Run a two-proportion z-test for the primary lead-rate KPI."""
+    """Run the primary two-proportion z-test for `has_any_lead`.
+
+    The confidence interval uses the unpooled standard error; the p-value uses
+    the pooled null standard error for equal A/B lead rates.
+    """
     by_group = lead_outcome_summary(dataframe).set_index("group")
     a = by_group.loc["A"]
     b = by_group.loc["B"]
@@ -509,7 +604,7 @@ def lead_rate_inference(dataframe):
 
 
 def duplicate_id_sensitivity(dataframe):
-    """Compare the primary lift with and without duplicated ad IDs."""
+    """Check whether duplicated ad IDs drive the measured A/B lift."""
     without_duplicate_ids = dataframe.loc[~dataframe["src_ad_id"].duplicated(keep=False)].copy()
     dropped_rows = len(dataframe) - len(without_duplicate_ids)
     primary = lead_rate_lift(dataframe).set_index("metric")["value"]
@@ -555,8 +650,13 @@ def lead_distribution_summary(dataframe):
     return summary
 
 
+# ---------------------------------------------------------------------------
+# A/B balance and segment analysis
+# ---------------------------------------------------------------------------
+
+
 def numeric_balance_summary(dataframe):
-    """Compare average numeric dimensions between A and B."""
+    """Compare A/B assignment balance for numeric pre-outcome dimensions."""
     dimension_columns = existing_columns(dataframe, NUMERIC_DIMENSION_COLUMNS + ["car_age"])
     summary = dataframe.groupby("group")[dimension_columns].mean().T.reset_index().rename(columns={"index": "dimension"})
     if {"A", "B"}.issubset(summary.columns):
@@ -584,7 +684,7 @@ def categorical_balance_summary(dataframe, column, top_n=8):
 
 
 def categorical_balance_overview(dataframe, top_n=8):
-    """Return the largest top-category A/B share gap for each categorical dimension."""
+    """Surface the largest categorical A/B balance gap per dimension."""
     rows = []
     for column in existing_columns(dataframe, CATEGORICAL_DIMENSION_COLUMNS):
         summary = categorical_balance_summary(dataframe, column, top_n=top_n)
@@ -607,7 +707,11 @@ def categorical_balance_overview(dataframe, top_n=8):
 
 
 def add_segments(dataframe):
-    """Add fixed, readable segment bands used in exploratory checks."""
+    """Add fixed business-readable segment bands.
+
+    These cuts use stable thresholds instead of sample quantiles so segment
+    tables stay comparable across notebooks.
+    """
     segmented = dataframe.copy()
 
     segmented["price_band"] = pd.cut(
@@ -664,7 +768,7 @@ def segment_coverage_summary(dataframe, segment_columns):
 
 
 def segment_outcome_summary(dataframe, segment_column, min_ads_per_group=200):
-    """Summarize A/B lead outcomes within one segment column."""
+    """Summarize A/B lift inside one segment and flag small cells."""
     summary = (
         dataframe.dropna(subset=[segment_column])
         .groupby([segment_column, "group"], observed=True)
@@ -697,6 +801,11 @@ def top_category_segment_summary(dataframe, column, top_n=8, min_ads_per_group=2
     return segment_outcome_summary(filtered, column, min_ads_per_group=min_ads_per_group)
 
 
+# ---------------------------------------------------------------------------
+# Question 3: descriptive lead insights
+# ---------------------------------------------------------------------------
+
+
 def q3_row_summary(raw_data, ab_data, excluded_data):
     """Summarize row counts used by q3 and carried over from q2."""
     return pd.DataFrame(
@@ -713,7 +822,7 @@ def q3_row_summary(raw_data, ab_data, excluded_data):
 
 
 def lead_channel_mix(dataframe):
-    """Summarize event frequency and event share for each lead channel."""
+    """Show which lead channels contribute the most lead events."""
     metric_columns = existing_columns(dataframe, METRIC_COLUMNS)
     total_lead_events = dataframe[metric_columns].sum().sum()
     rows = []
@@ -809,7 +918,7 @@ def listing_quality_summary(dataframe):
 
 
 def segment_insight_summary(dataframe, segment_column, min_ads=500):
-    """Summarize descriptive lead outcomes for one q3 segment."""
+    """Summarize descriptive q3 lead outcomes for one business segment."""
     summary = (
         dataframe.dropna(subset=[segment_column])
         .groupby(segment_column, observed=True)
@@ -900,7 +1009,7 @@ def add_listing_lifecycle_fields(dataframe):
 
 
 def lifecycle_summary(dataframe):
-    """Summarize lead outcomes by days-live band."""
+    """Summarize descriptive q3 lead outcomes by listing age band."""
     summary = (
         dataframe.dropna(subset=["days_live_band"])
         .groupby("days_live_band", observed=True)
@@ -1001,7 +1110,7 @@ def business_insight_table(ab_data):
                 "Interpretation",
             ],
             "insight": [
-                f"B has a {pct(lift['B minus A lead-rate difference'])} higher share of ads with any lead than A ({pct(lift['Relative lift vs A'])} relative lift).",
+                f"B has a {format_percentage(lift['B minus A lead-rate difference'])} higher share of ads with any lead than A ({format_percentage(lift['Relative lift vs A'])} relative lift).",
                 "At a 5% significance level, the B-A lead-rate gap is statistically significant (p < 0.001).",
                 f"B also has higher average total leads per ad ({outcomes.loc['B', 'avg_total_leads']:.3f} vs {outcomes.loc['A', 'avg_total_leads']:.3f}).",
                 f"The largest standardized numeric balance gap is {largest_numeric_gap_label} ({largest_numeric_gap['standardized_diff']:.2f} standardized difference, B vs A).",
@@ -1133,7 +1242,7 @@ def plot_labeled_horizontal_bars(
     """Draw a simple labeled horizontal bar chart with shared styling."""
     ax.barh(labels, values, color=colors)
     if zero_line:
-        ax.axvline(0, color="#333333", linewidth=1)
+        ax.axvline(0, color=PLOT_COLORS["text"], linewidth=1)
     finish_plot(ax, title, xlabel=xlabel, ylabel=None, percent_x=percent_x)
     add_bar_labels(ax, percent=percent_labels, decimals=decimals, axis="horizontal")
     simplify_fully_labeled_bar_axis(ax, axis="horizontal")
@@ -1142,17 +1251,22 @@ def plot_labeled_horizontal_bars(
 
 def finish_plot(ax, title, xlabel=None, ylabel=None, percent_x=False, percent_y=False):
     """Apply the shared q2 chart title, axis, grid, and percent formatting."""
-    ax.set_title(title, loc="left", fontweight="bold", pad=12)
+    ax.set_facecolor(PLOT_COLORS["background"])
+    ax.figure.set_facecolor(PLOT_COLORS["background"])
+    ax.set_title(title, loc="left", fontweight="bold", pad=12, color=PLOT_COLORS["text"])
     if xlabel is not None:
-        ax.set_xlabel(xlabel)
+        ax.set_xlabel(xlabel, color=PLOT_COLORS["text"])
     if ylabel is not None:
-        ax.set_ylabel(ylabel)
+        ax.set_ylabel(ylabel, color=PLOT_COLORS["text"])
     if percent_x:
         ax.xaxis.set_major_formatter(mtick.PercentFormatter(1.0))
     if percent_y:
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
     ax.spines[["top", "right"]].set_visible(False)
-    ax.grid(axis="y", alpha=0.25)
+    for spine in ax.spines.values():
+        spine.set_color(PLOT_COLORS["axis"])
+    ax.tick_params(colors=PLOT_COLORS["text"])
+    ax.grid(axis="y", color=PLOT_COLORS["grid"], alpha=0.75)
     ax.grid(axis="x", visible=False)
     return ax
 
@@ -1173,6 +1287,7 @@ def add_bar_labels(ax, percent=False, decimals=1, axis="vertical"):
                 xytext=(0, 4),
                 textcoords="offset points",
                 fontsize=9,
+                color=PLOT_COLORS["text"],
             )
         else:
             value = patch.get_width()
@@ -1192,6 +1307,7 @@ def add_bar_labels(ax, percent=False, decimals=1, axis="vertical"):
                 xytext=(offset, 0),
                 textcoords="offset points",
                 fontsize=9,
+                color=PLOT_COLORS["text"],
             )
 
 
@@ -1402,7 +1518,7 @@ def plot_cumulative_lead_share(ranked_leads, cutoff_summary, highlighted_ad_shar
     """Plot cumulative lead events by ads ranked from highest to lowest lead count."""
     fig, ax = plt.subplots(figsize=(7.5, 4.5))
     ax.plot(ranked_leads["ad_share"], ranked_leads["lead_share"], color=PLOT_COLORS["A"], linewidth=2.5)
-    ax.plot([0, 1], [0, 1], color="#B8B8B8", linestyle="--", linewidth=1)
+    ax.plot([0, 1], [0, 1], color=PLOT_COLORS["axis"], linestyle="--", linewidth=1)
     finish_plot(
         ax,
         "Cumulative lead events by ranked ads",
@@ -1420,7 +1536,7 @@ def plot_cumulative_lead_share(ranked_leads, cutoff_summary, highlighted_ad_shar
             f"Top {highlighted_ad_share:.0%} of ads: {lead_share:.1%} of leads",
             xy=(highlighted_ad_share, ranked_leads.loc[rank_index, "lead_share"]),
             xytext=(0.22, 0.58),
-            arrowprops={"arrowstyle": "->", "color": "#333333", "linewidth": 1},
+            arrowprops={"arrowstyle": "->", "color": PLOT_COLORS["text"], "linewidth": 1},
             fontsize=10,
         )
 
@@ -1536,7 +1652,7 @@ def plot_segment_lift(dataframe, segment_column, lead_rate_title, lift_title):
         percent_y=True,
         percent_labels=True,
     )
-    axes[1].axhline(0, color="#333333", linewidth=1)
+    axes[1].axhline(0, color=PLOT_COLORS["text"], linewidth=1)
     plt.tight_layout()
     return fig, axes
 
@@ -1881,7 +1997,10 @@ def style_segment_insight_table(table, max_rows=None):
     display_table = visible_table.copy().rename(columns=format_table_header)
     lead_rate_column = format_table_header("lead_rate")
     avg_leads_column = format_table_header("avg_total_leads")
-    heatmap_cmap = LinearSegmentedColormap.from_list("segment_yellow_green", ["#F4D35E", "#2E7D32"])
+    heatmap_cmap = LinearSegmentedColormap.from_list(
+        "segment_blue_green",
+        ["#EAF0F7", PLOT_COLORS["diff"]],
+    )
 
     formatters = {
         column: (lambda value, column=column: format_table_value(value, column))

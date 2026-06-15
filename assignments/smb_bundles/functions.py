@@ -1,8 +1,6 @@
-"""Shared helpers for the SMB Bundles notebooks.
+"""Shared helpers for the SMB Bundles analysis notebooks.
 
-The notebooks should read like a presentation-ready analysis story. This
-module holds the repeatable mechanics: file paths, data loading, aggregation,
-metric formatting, and chart setup.
+Includes file paths, data loading, aggregation, metric formatting, and charts.
 """
 
 from pathlib import Path
@@ -141,24 +139,60 @@ CATEGORY_TRANSLATIONS = {
     "Zakelijke goederen": "Business Goods",
 }
 
+# Analysis map for the main data transformations and result calculations.
+AUDIT_CRITICAL_FUNCTIONS = {
+    "q2_outreach_scoring": [
+        "read_q2_data",
+        "add_q2_row_metrics",
+        "seller_level_q2_summary",
+        "q2_window_summary",
+        "q2_paid_product_breadth",
+        "score_q2_outreach_readiness",
+        "q2_scored_sellers_export",
+    ],
+    "q3_dashboard_model": [
+        "load_q3_bundle_data",
+        "q3_dashboard_data",
+        "q3_reference_dates",
+        "q3_current_bundle_at",
+        "q3_seller_fields",
+        "q3_weekly_metrics",
+        "q3_modeled_bill_dates",
+        "q3_modeled_revenue_events",
+        "q3_revenue_by_4_week_period",
+        "q3_cohort_metrics",
+        "q3_segment_metrics",
+    ],
+}
+
 
 # ---------------------------------------------------------------------------
 # General utilities
 # ---------------------------------------------------------------------------
 
 
-def pct(value):
+def format_percentage(value):
     """Format a share as a readable percentage."""
     if pd.isna(value):
         return pd.NA
     return f"{value:.1%}"
 
 
-def eur(value):
+def pct(value):
+    """Backward-compatible short alias for percentage formatting."""
+    return format_percentage(value)
+
+
+def format_euros(value):
     """Format a numeric value as euros for presentation output."""
     if pd.isna(value):
         return pd.NA
     return f"€{value:,.0f}"
+
+
+def eur(value):
+    """Backward-compatible short alias for euro formatting."""
+    return format_euros(value)
 
 
 def format_display_table(dataframe, euro_columns=None, decimal_columns=None, integer_columns=None):
@@ -169,7 +203,7 @@ def format_display_table(dataframe, euro_columns=None, decimal_columns=None, int
     integer_columns = integer_columns or []
 
     for column in existing_columns(display, euro_columns):
-        display[column] = display[column].map(lambda value: eur(value))
+        display[column] = display[column].map(lambda value: format_euros(value))
     for column in existing_columns(display, decimal_columns):
         display[column] = display[column].map(lambda value: f"{value:,.1f}")
     for column in existing_columns(display, integer_columns):
@@ -396,7 +430,11 @@ def read_q2_data(data_path=Q2_CSV_PATH):
 
 
 def add_q2_row_metrics(dataframe):
-    """Add row-level ad, feature, and fee totals to the Q2 dataset."""
+    """Add row-level commercial activity signals used by Q2 scoring.
+
+    These definitions translate raw product columns into seller-level signals
+    used later for prioritization.
+    """
     data = dataframe.copy()
     data["total_ad_insertions"] = data[existing_columns(data, AD_COUNT_COLUMNS)].sum(axis=1)
     data["paid_ad_insertions"] = data.get("N_PAID_AD_INSERTIONS", 0)
@@ -416,6 +454,9 @@ def add_q2_row_metrics(dataframe):
     ].sum(axis=1)
     data["paid_marketplace_actions"] = data["paid_ad_insertions"] + data["total_feature_uses"]
     return data
+
+
+# Q2 exploration and quality checks
 
 
 def q2_overview(dataframe):
@@ -506,7 +547,11 @@ def q2_monthly_summary(dataframe):
 
 
 def seller_level_q2_summary(dataframe):
-    """Aggregate Q2 rows to one row per seller for prioritization analysis."""
+    """Aggregate seller-month-category rows to one row per seller.
+
+    This is the base table for outreach prioritization: totals measure scale,
+    active months measure consistency, and boolean flags preserve adoption.
+    """
     data = add_q2_row_metrics(dataframe)
     data["_has_activity"] = data["total_ad_insertions"].add(data["paid_marketplace_actions"]).gt(0)
     active_months = (
@@ -715,6 +760,9 @@ def q2_spike_comparison(
             "Fees Explained %": "{:.1%}",
         }
     ), monthly_without_seller
+
+
+# Q2 visualization helpers
 
 
 def style_minimal_horizontal_bar(ax):
@@ -928,13 +976,21 @@ def plot_q2_fee_concentration(seller_summary):
     return fig, ax
 
 
-def percentile(series):
+def percentile_rank(series):
     """Rank a numeric signal as a 0-1 percentile."""
     return series.rank(pct=True, method="average")
 
 
+def percentile(series):
+    """Backward-compatible short alias for percentile ranking."""
+    return percentile_rank(series)
+
+
+# Q2 seller scoring and export
+
+
 def q2_window_summary(dataframe, prefix):
-    """Aggregate Q2 seller activity for a named time window."""
+    """Aggregate seller activity for a named scoring window."""
     return (
         dataframe.groupby(Q2_USER_COLUMN, as_index=False)
         .agg(
@@ -950,7 +1006,7 @@ def q2_window_summary(dataframe, prefix):
 
 
 def q2_paid_product_breadth(dataframe):
-    """Count how many paid product types each seller has used."""
+    """Count distinct paid product types each seller has used at least once."""
     paid_product_columns = existing_columns(dataframe, ["N_PAID_AD_INSERTIONS"] + FEATURE_COUNT_COLUMNS)
     return (
         dataframe.assign(**{column: dataframe[column].gt(0) for column in paid_product_columns})
@@ -963,12 +1019,18 @@ def q2_paid_product_breadth(dataframe):
 
 
 def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
-    """Score sellers for outreach readiness using recency, adoption, consistency, growth, and fees."""
+    """Score sellers for outreach using recency, breadth, consistency, growth, and fees.
+
+    Percentile ranks allow signals with different units to be averaged without
+    one raw scale dominating the selection.
+    """
     data = add_q2_row_metrics(dataframe)
 
     if seller_summary is None:
         seller_summary = seller_level_q2_summary(data)
 
+    # Compare the latest six months with the preceding six months for recency
+    # and growth signals. The final month is data-driven, not hard-coded.
     last_month = data[Q2_DATE_COLUMN].max()
     recent_start = last_month - pd.DateOffset(months=5)
     previous_start = recent_start - pd.DateOffset(months=6)
@@ -1011,12 +1073,14 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
         scored["recent_paid_usage"] / scored["paid_marketplace_actions"].clip(lower=1)
     )
 
-    scored["recent_paid_usage_score"] = percentile(scored["recent_paid_usage"])
-    scored["paid_product_breadth_score"] = percentile(scored["paid_product_breadth"])
-    scored["consistency_score"] = percentile(scored["active_months"])
-    scored["category_breadth_score"] = percentile(scored["categories"])
-    scored["growth_score"] = percentile(scored["paid_usage_growth_ratio"])
-    scored["fee_score"] = percentile(scored["total_fees"])
+    # Core outreach score: equal-weighted percentile signals selected for
+    # commercial intent, repeatability, recent momentum, and current value.
+    scored["recent_paid_usage_score"] = percentile_rank(scored["recent_paid_usage"])
+    scored["paid_product_breadth_score"] = percentile_rank(scored["paid_product_breadth"])
+    scored["consistency_score"] = percentile_rank(scored["active_months"])
+    scored["category_breadth_score"] = percentile_rank(scored["categories"])
+    scored["growth_score"] = percentile_rank(scored["paid_usage_growth_ratio"])
+    scored["fee_score"] = percentile_rank(scored["total_fees"])
     outreach_score_columns = [
         "recent_paid_usage_score",
         "paid_product_breadth_score",
@@ -1027,6 +1091,8 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
     ]
     scored["outreach_readiness_score"] = scored[outreach_score_columns].mean(axis=1)
 
+    # Main comparison cohort: outreach-ready top share vs a simple fee-only top
+    # share, both with the same cohort size for a fair method comparison.
     cohort_size = int(np.ceil(len(scored) * top_share))
     outreach_ready_ids = set(scored.nlargest(cohort_size, "outreach_readiness_score")[Q2_USER_COLUMN])
     fee_top_ids = set(scored.nlargest(cohort_size, "total_fees")[Q2_USER_COLUMN])
@@ -1043,8 +1109,10 @@ def score_q2_outreach_readiness(dataframe, seller_summary=None, top_share=0.25):
         default="Neither",
     )
 
-    scored["paid_visibility_score"] = percentile(scored["paid_visibility_uses"])
-    scored["listing_volume_score"] = percentile(scored["total_ad_insertions"])
+    # Bundle recommendation within the outreach-ready cohort: Plus is reserved
+    # for sellers with stronger visibility, product breadth, and listing volume.
+    scored["paid_visibility_score"] = percentile_rank(scored["paid_visibility_uses"])
+    scored["listing_volume_score"] = percentile_rank(scored["total_ad_insertions"])
     bundle_fit_columns = [
         scored["paid_visibility_score"],
         scored["paid_product_breadth_score"],
@@ -1403,7 +1471,7 @@ def plot_q2_bundle_score_profile(scored_sellers):
 
 
 def q2_scored_sellers_export(scored_sellers):
-    """Return a seller-level scoring table for preview and CSV export."""
+    """Return the seller-level scoring table used for preview and CSV export."""
     export = scored_sellers.rename(
         columns={
             "fee_score": "total_fees_score",
@@ -1485,6 +1553,9 @@ def add_subscription_metrics(dataframe, as_of_date=None):
     return data
 
 
+# Q3 legacy summary helpers retained for notebook reuse
+
+
 def subscription_kpi_summary(dataframe, as_of_date=None):
     """Return a compact KPI table for the Q3 sales dashboard."""
     data = add_subscription_metrics(dataframe, as_of_date=as_of_date)
@@ -1528,7 +1599,7 @@ Q3_BUNDLE_PRICES = {"Basic": 19.99, "Plus": 49.99}
 
 
 def load_q3_bundle_data(data_path=Q3_CSV_PATH):
-    """Load, validate, and normalize the Q3 bundle registration intervals."""
+    """Load and normalize Q3 registration intervals for dashboard modeling."""
     data = pd.read_csv(data_path)
     missing_columns = sorted(set(Q3_EXPECTED_COLUMNS) - set(data.columns))
     if missing_columns:
@@ -1544,8 +1615,11 @@ def load_q3_bundle_data(data_path=Q3_CSV_PATH):
     return data
 
 
+# Q3 data validation and exploratory summaries
+
+
 def q3_reference_dates(dataframe):
-    """Return the launch start and dashboard reference date for Q3 monitoring."""
+    """Return launch start and latest observable dashboard reference date."""
     finite_end_max = dataframe.loc[~dataframe["is_open_ended"], "End"].max()
     reference_date = max(dataframe["Start"].max(), finite_end_max)
     launch_start = dataframe.loc[dataframe["is_bundle"], "Start"].min()
@@ -1683,7 +1757,7 @@ def q3_short_eda_findings(dataframe, sellers, weekly_metrics, reference_date):
             {
                 "Finding": "Launch demand was front-loaded",
                 "Evidence": f"Peak week: {int(peak_registrations):,} new first-bundle registrations ({peak_week:%Y-%m-%d}).",
-                "Interpretation": "The launch created an early registration spike; later monitoring should focus on paid-base retention.",
+                "Interpretation": "The launch created an early registration spike; later monitoring focuses on paid-base retention.",
             },
             {
                 "Finding": "Basic is the larger entry bundle",
@@ -1701,7 +1775,7 @@ def q3_short_eda_findings(dataframe, sellers, weekly_metrics, reference_date):
             {
                 "Finding": "Switching and repeat intervals exist",
                 "Evidence": f"{pct(multi_interval_share)} of bundle sellers have more than one bundle period.",
-                "Interpretation": "Seller-level metrics should use period logic, not one row per seller assumptions.",
+                "Interpretation": "Seller-level metrics need period logic rather than one-row-per-seller assumptions.",
             },
             {
                 "Finding": "Many past starters currently have no bundle",
@@ -2139,8 +2213,15 @@ def plot_q3_customer_type_comparison(dataframe, sellers):
     return ax
 
 
+# Q3 dashboard data model
+
+
 def q3_dashboard_data(data_path=Q3_CSV_PATH, cohort_window_days=FREE_TRIAL_DAYS):
-    """Build the reusable Q3 dashboard inputs from the bundle registration file."""
+    """Build all reusable Q3 dashboard inputs from registration intervals.
+
+    Loads intervals, derives one seller row, builds weekly status, models paid
+    revenue, and creates cohort and segment tables.
+    """
     bundle_df = load_q3_bundle_data(data_path)
     launch_start, dashboard_reference_date = q3_reference_dates(bundle_df)
     seller_fields = q3_seller_fields(bundle_df, dashboard_reference_date)
@@ -2188,7 +2269,7 @@ def q3_dashboard_data(data_path=Q3_CSV_PATH, cohort_window_days=FREE_TRIAL_DAYS)
 
 
 def q3_current_bundle_at(dataframe, user_ids, as_of_date):
-    """Return each seller's active interval bundle at a point in time."""
+    """Return each seller's active interval bundle at one snapshot date."""
     active = dataframe[
         (dataframe[Q3_USER_COLUMN].isin(user_ids))
         & (dataframe["Start"] <= as_of_date)
@@ -2235,7 +2316,11 @@ def q3_current_bundle_at_checkpoints(dataframe, checkpoints):
 
 
 def q3_seller_fields(dataframe, reference_date):
-    """Derive one row per seller for current trial/paid status monitoring."""
+    """Derive one seller row with first bundle, trial end, and current status.
+
+    This function converts interval-level data into the seller grain used by
+    weekly, cohort, revenue, and segment reporting.
+    """
     bundle_events = dataframe.loc[dataframe["is_bundle"]].copy()
     first_bundle = (
         bundle_events.sort_values([Q3_USER_COLUMN, "Start", "Bundle"])
@@ -2309,6 +2394,7 @@ def q3_weekly_metrics(dataframe, sellers, launch_start, reference_date):
     weeks = pd.date_range(launch_start.to_period("W-SUN").start_time, reference_date, freq="W-MON")
     rows = []
     for week in weeks:
+        # Snapshot at week end, capped at the latest observable date.
         snapshot_date = min(week + pd.Timedelta(days=6), reference_date)
         current_bundle = q3_current_bundle_at(dataframe, sellers.index, snapshot_date)
         paid_mask = snapshot_date >= sellers["trial_end_date"]
@@ -2353,7 +2439,11 @@ def q3_weekly_metrics(dataframe, sellers, launch_start, reference_date):
 
 
 def q3_modeled_bill_dates(row, sellers, reference_date):
-    """Return modeled 4-week billing dates for one bundle interval."""
+    """Return modeled 4-week billing dates for one paid bundle interval.
+
+    Billing starts after the seller's free trial and stops at the interval end
+    or the dashboard reference date, whichever comes first.
+    """
     if row["Bundle"] not in Q3_BUNDLE_PRICES:
         return []
 
@@ -2382,7 +2472,7 @@ def q3_modeled_revenue_events(dataframe, sellers, reference_date):
 
 
 def q3_revenue_by_4_week_period(revenue_events, launch_start):
-    """Aggregate modeled paid revenue into 28-day launch periods."""
+    """Aggregate modeled paid revenue into consecutive 28-day launch periods."""
     if revenue_events.empty:
         return pd.DataFrame(
             {
@@ -2496,6 +2586,9 @@ def q3_revenue_display_table(revenue_4w, periods=8):
     )
 
 
+# Q3 KPI cards and near-term pipeline checks
+
+
 def q3_trials_reaching_day_28_soon(sellers, reference_date, days_ahead=14):
     """List active trial sellers expected to reach day 28 soon."""
     cutoff_date = reference_date + pd.Timedelta(days=days_ahead)
@@ -2607,10 +2700,10 @@ def q3_sales_kpis(weekly_metrics, revenue_4w, reference_date, registrations_4w=N
                     f"{change_text(latest_registrations, previous_registrations, registration_change_suffix)}"
                 ),
                 "Plus share of active paid bundles": (
-                    f"{pct(latest_plus_share)} {point_change_text(latest_plus_share, previous_plus_share, 'w/w')}"
+                    f"{format_percentage(latest_plus_share)} {point_change_text(latest_plus_share, previous_plus_share, 'w/w')}"
                 ),
                 "Modeled revenue in latest complete 4wk period": (
-                    f"{eur(latest_complete_revenue)} "
+                    f"{format_euros(latest_complete_revenue)} "
                     f"{change_text(latest_complete_revenue, previous_complete_revenue, 'vs prev 4wk')}"
                 ),
             }
@@ -2660,6 +2753,9 @@ def q3_active_paid_at_checkpoints(dataframe, sellers, checkpoints):
     return current_bundle.isin(Q3_BUNDLE_PRICES) & trial_ended
 
 
+# Q3 cohort retention and conversion tables
+
+
 def q3_cohort_base(sellers, launch_start, cohort_window_days=FREE_TRIAL_DAYS):
     """Assign first-bundle sellers to fixed-width first-start cohorts."""
     cohorts = sellers.dropna(subset=["first_bundle_start"]).copy()
@@ -2703,7 +2799,11 @@ def q3_cohort_metrics(
     cohort_window_days=FREE_TRIAL_DAYS,
     maturity_days=Q3_COHORT_MATURITY_DAYS,
 ):
-    """Calculate paid cohort metrics across aggregation windows and maturity checkpoints."""
+    """Calculate active-paid cohort rates at fixed maturity checkpoints.
+
+    Immature checkpoints are left blank (`NaN`) so the dashboard does not mix
+    partial observation windows with mature cohort outcomes.
+    """
     cohorts = q3_cohort_base(sellers, launch_start, cohort_window_days=cohort_window_days)
     rows = []
     for cohort_start, group in cohorts.groupby("cohort_start"):
@@ -2836,6 +2936,7 @@ def q3_cohort_heatmap_table(cohort_metrics):
     heatmap_max = np.nanmax(heatmap_values)
     return (
         table.style.format(formatters, na_rep="")
+        .hide(axis="index")
         .background_gradient(
             cmap=Q3_HEATMAP_CMAP,
             subset=rate_columns,
@@ -2846,8 +2947,11 @@ def q3_cohort_heatmap_table(cohort_metrics):
     )
 
 
+# Q3 segmentation and enrichment mockups
+
+
 def q3_segment_metrics_for_series(dataframe, sellers, reference_date, segment_name, segment_values):
-    """Create segment diagnostics for one seller-level segmentation."""
+    """Create conversion, paid mix, and no-bundle diagnostics for one segment."""
     cohorts = sellers.dropna(subset=["first_bundle_start"]).copy()
     cohorts["segment_value"] = segment_values.reindex(cohorts.index).fillna("Unknown")
     rows = []
@@ -2967,7 +3071,7 @@ def q3_segment_merge_audit(sellers, q2_data_path=Q2_CSV_PATH):
                 "Potential segment": "SMB activity proxy",
                 "Useful fields": "listing volume, category breadth, paid product breadth, paid visibility, total fees",
                 "Status": f"Blocked: {overlap:,} overlapping seller IDs ({q2_coverage:.0%} coverage)",
-                "Note": "Could approximate Q1 SMB likelihood, but should be labelled as a proxy.",
+                "Note": "Could approximate Q1 SMB likelihood, with clear proxy labeling.",
             },
             {
                 "Source": "Q1 User Related Info",
@@ -3044,17 +3148,22 @@ def q3_segment_enrichment_opportunities():
     )
 
 
-def q3_segment_mockup_descriptions():
+def q3_segment_module_descriptions():
     """Describe high-value segmentation visuals that require merged data."""
     return pd.DataFrame(
         [
             {
-                "Mock visualization": "Recent change alerts",
+                "Module": "Recent change alerts",
                 "Potential merged data": "Daily or weekly segment snapshots joined to registration history",
                 "What it would show": "Sharp 4-week changes in active paid bundles, no-bundle share, or Plus share.",
             },
         ]
     )
+
+
+def q3_segment_mockup_descriptions():
+    """Backward-compatible wrapper for segment module descriptions."""
+    return q3_segment_module_descriptions()
 
 
 def q3_dummy_segment_enrichment_data():
@@ -3082,6 +3191,28 @@ def add_q3_dummy_data_label(ax):
         0.01,
         0.98,
         "Dummy Data",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=9,
+        fontweight="bold",
+        color=PLOT_COLORS["text"],
+        bbox={
+            "boxstyle": "round,pad=0.25",
+            "facecolor": PLOT_COLORS["background"],
+            "edgecolor": PLOT_COLORS["grid"],
+            "alpha": 0.9,
+        },
+    )
+    return ax
+
+
+def add_q3_chart_note(ax, text, y=0.98):
+    """Add a compact note for the active chart view."""
+    ax.text(
+        0.01,
+        y,
+        text,
         transform=ax.transAxes,
         ha="left",
         va="top",
@@ -3132,7 +3263,13 @@ def plot_q3_mock_smb_fit_seller_size(dummy_data=None):
     ax.spines["left"].set_visible(False)
     ax.margins(x=0.05)
     add_q3_dummy_data_label(ax)
+    add_q3_chart_note(ax, "Metric: Active paid bundle rate", y=0.88)
     return ax
+
+
+def plot_q3_segment_change_alerts(dummy_data=None):
+    """Plot dummy recent segment change alerts."""
+    return plot_q3_mock_smb_fit_seller_size(dummy_data)
 
 
 def plot_q3_segment_enrichment_mockups(dummy_data=None):
@@ -3173,39 +3310,25 @@ def format_q3_month_axis_for_weekly_bars(ax, weekly_index, month_step=1):
     return ax
 
 
+# Q3 sales and revenue charts
+
+
 def plot_q3_weekly_new_registrations(weekly_metrics):
-    """Plot first bundle weekly registrations overall and by bundle type."""
+    """Plot first bundle weekly registrations by bundle type."""
     if plt is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
 
-    fig, axes = plt.subplots(
-        2,
-        1,
-        figsize=(11, 7),
-        sharex=True,
-        constrained_layout=True,
-    )
-
-    weekly_metrics["New bundle registrations"].plot(
-        ax=axes[0],
-        color=PLOT_COLORS["q3"],
-        linewidth=2,
-    )
-    axes[0].set_title("Weekly New First Bundle Registrations")
-    axes[0].set_xlabel("")
-    axes[0].set_ylabel("Sellers")
-    format_number_axis(axes[0], "y")
-
-    weekly_metrics[["Weekly new Basic registrations", "Weekly new Plus registrations"]].plot(
-        ax=axes[1],
+    ax = weekly_metrics[["Weekly new Basic registrations", "Weekly new Plus registrations"]].plot(
+        figsize=(11, 4),
         color=[PLOT_COLORS["neutral"], PLOT_COLORS["q3"]],
         linewidth=2,
     )
-    axes[1].set_title("Weekly New First Bundle Registrations - by Bundle")
-    axes[1].set_xlabel("")
-    axes[1].set_ylabel("Sellers")
-    format_number_axis(axes[1], "y")
-    return fig, axes
+    ax.set_title("Weekly New First Bundle Registrations")
+    ax.set_xlabel("")
+    ax.set_ylabel("Sellers")
+    format_number_axis(ax, "y")
+    add_q3_chart_note(ax, "Breakdown: Bundle type")
+    return ax
 
 
 def plot_q3_active_paid_sellers(weekly_metrics):
@@ -3232,43 +3355,9 @@ def plot_q3_active_paid_sellers(weekly_metrics):
 
 
 def plot_q3_active_bundle_sellers(weekly_metrics):
-    """Plot active bundle sellers overall and by bundle type."""
+    """Plot active bundle sellers by bundle type and paid/trial status."""
     if plt is None or Line2D is None:
         raise ModuleNotFoundError("matplotlib is required for plotting helpers")
-
-    fig, axes = plt.subplots(
-        2,
-        1,
-        figsize=(11, 7),
-        sharex=True,
-        constrained_layout=True,
-    )
-
-    overall = pd.DataFrame(
-        {
-            "Subscription": weekly_metrics["Total active paid sellers"],
-            "Trial": weekly_metrics["Active trial sellers"],
-        },
-        index=weekly_metrics.index,
-    )
-    overall.plot(
-        ax=axes[0],
-        color=[PLOT_COLORS["q3"], PLOT_COLORS["q3"]],
-        linewidth=2,
-        legend=False,
-    )
-    for line, linestyle in zip(axes[0].lines, ["-", "--"]):
-        line.set_linestyle(linestyle)
-    axes[0].legend(
-        handles=[
-            Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="-", label="Subscription"),
-            Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="--", label="Trial"),
-        ]
-    )
-    axes[0].set_title("Active Bundles")
-    axes[0].set_xlabel("")
-    axes[0].set_ylabel("Bundles")
-    format_number_axis(axes[0], "y")
 
     plot_columns = [
         "Active paid Basic sellers",
@@ -3277,7 +3366,7 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
         "Active trial Plus sellers",
     ]
     weekly_metrics[plot_columns].plot(
-        ax=axes[1],
+        figsize=(11, 4),
         color=[
             PLOT_COLORS["neutral"],
             PLOT_COLORS["q3"],
@@ -3287,7 +3376,8 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
         linewidth=2,
         legend=False,
     )
-    for line, linestyle in zip(axes[1].lines, ["-", "-", "--", "--"]):
+    ax = plt.gca()
+    for line, linestyle in zip(ax.lines, ["-", "-", "--", "--"]):
         line.set_linestyle(linestyle)
     legend_handles = [
         Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="-", label="Paid Basic bundles"),
@@ -3295,12 +3385,13 @@ def plot_q3_active_bundle_sellers(weekly_metrics):
         Line2D([0], [0], color=PLOT_COLORS["neutral"], lw=2, linestyle="--", label="Trial Basic bundles"),
         Line2D([0], [0], color=PLOT_COLORS["q3"], lw=2, linestyle="--", label="Trial Plus bundles"),
     ]
-    axes[1].legend(handles=legend_handles)
-    axes[1].set_title("Active Bundles - by Bundle")
-    axes[1].set_xlabel("")
-    axes[1].set_ylabel("Bundles")
-    format_number_axis(axes[1], "y")
-    return fig, axes
+    ax.legend(handles=legend_handles, loc="upper right")
+    add_q3_chart_note(ax, "Breakdown: Bundle type")
+    ax.set_title("Active Bundles")
+    ax.set_xlabel("")
+    ax.set_ylabel("Bundles")
+    format_number_axis(ax, "y")
+    return ax
 
 
 def plot_q3_active_trial_sellers(weekly_metrics):
@@ -3356,6 +3447,7 @@ def plot_q3_plus_share(weekly_metrics):
     ax.set_ylim(0, 100)
     format_percent_axis(ax, "y")
     ax.margins(x=0.04)
+    add_q3_chart_note(ax, "Breakdown: All sellers")
     return ax
 
 
@@ -3503,6 +3595,7 @@ def plot_q3_modeled_revenue(revenue_4w, reference_date=None):
     ax.set_xlabel("4-week period start")
     ax.set_ylabel("Modeled revenue (€)")
     format_eur_axis(ax, "y")
+    add_q3_chart_note(ax, "Breakdown: All sellers")
     if ax.get_ylim()[0] < 0:
         ax.set_ylim(bottom=0)
     ax.set_xticks(x_values)
@@ -3709,7 +3802,13 @@ def plot_q3_mock_seller_leads_uplift(dummy_data=None):
     ax.legend(title="")
     ax.margins(x=0.08, y=0.18)
     add_q3_dummy_data_label(ax)
+    add_q3_chart_note(ax, "Breakdown: Bundle type", y=0.88)
     return ax
+
+
+def plot_q3_seller_leads_uplift(dummy_data=None):
+    """Plot dummy seller lead uplift versus pre-bundle baseline by bundle."""
+    return plot_q3_mock_seller_leads_uplift(dummy_data)
 
 
 def plot_q3_business_impact_mockups(dummy_data=None):
