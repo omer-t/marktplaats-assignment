@@ -1696,19 +1696,14 @@ def plot_q2_bundle_score_profile(scored_sellers):
 
 def q2_scored_sellers_export(scored_sellers):
     """Return the seller-level scoring table used for preview and CSV export."""
-    export = scored_sellers.rename(
-        columns={
-            "fee_score": "total_fees_score",
-            "growth_score": "recent_growth_score",
-        }
-    ).copy()
+    export = scored_sellers.copy()
 
     score_columns = [
         "recent_paid_usage_score",
         "consistency_score",
         "category_breadth_score",
-        "recent_growth_score",
-        "total_fees_score",
+        "growth_score",
+        "fee_score",
         "paid_visibility_score",
         "paid_product_breadth_score",
         "listing_volume_score",
@@ -1716,31 +1711,35 @@ def q2_scored_sellers_export(scored_sellers):
         "bundle_fit_score",
     ]
     export[score_columns] = export[score_columns] * 100
+    export = export.rename(
+        columns={
+            Q2_USER_COLUMN: "seller_id",
+            "recent_paid_usage_score": "recent_paid_usage_percentile",
+            "consistency_score": "consistency_percentile",
+            "category_breadth_score": "category_breadth_percentile",
+            "growth_score": "recent_growth_percentile",
+            "fee_score": "total_fees_percentile",
+            "paid_visibility_score": "paid_visibility_percentile",
+            "paid_product_breadth_score": "paid_product_breadth_percentile",
+            "listing_volume_score": "listing_volume_percentile",
+            "is_targeted_for_plus": "is_targeted_for_plus_group",
+        }
+    )
 
     column_order = [
-        Q2_USER_COLUMN,
+        "seller_id",
         "outreach_readiness_score",
-        "recent_paid_usage_score",
-        "consistency_score",
-        "category_breadth_score",
-        "recent_growth_score",
-        "total_fees_score",
-        "paid_visibility_score",
-        "paid_product_breadth_score",
-        "listing_volume_score",
-        "recent_paid_usage",
-        "active_months",
-        "categories",
-        "total_ad_insertions",
-        "paid_usage_growth_ratio",
-        "total_fees",
-        "paid_product_breadth",
-        "is_outreach_ready_group",
-        "is_total_fee_group",
-        "is_targeted_for_plus",
-        "selection_group",
         "bundle_fit_score",
-        "bundle_target_group",
+        "recent_paid_usage_percentile",
+        "consistency_percentile",
+        "category_breadth_percentile",
+        "recent_growth_percentile",
+        "total_fees_percentile",
+        "paid_visibility_percentile",
+        "paid_product_breadth_percentile",
+        "listing_volume_percentile",
+        "is_outreach_ready_group",
+        "is_targeted_for_plus_group",
     ]
     return export[column_order].round(2)
 
