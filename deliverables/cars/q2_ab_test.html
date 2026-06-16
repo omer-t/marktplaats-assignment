@@ -7828,11 +7828,10 @@ whether this initiative has improved this metric?</p>
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="1.-Business-Question-and-Test-Design">1. Business Question and Test Design<a class="anchor-link" href="#1.-Business-Question-and-Test-Design">¶</a></h2><h3 id="Primary-KPI">Primary KPI<a class="anchor-link" href="#Primary-KPI">¶</a></h3><p>Share of Car Ads With at Least One Lead.</p>
 <p><code>has_any_lead = telclicks &gt; 0 OR bids &gt; 0 OR n_asq &gt; 0 OR webclicks &gt; 0</code></p>
-<h3 id="Test-Design">Test Design<a class="anchor-link" href="#Test-Design">¶</a></h3><p>Use a randomized A/B test to answer whether the new product feature increases the share of car ads that receive at least one lead.</p>
+<h3 id="Test-Design">Test Design<a class="anchor-link" href="#Test-Design">¶</a></h3><p>Use a <strong>randomized A/B test</strong> to answer whether the new product feature increases the share of car ads that receive at least one lead.</p>
 <p>Why this method:</p>
 <ul>
 <li>Random assignment is the cleanest way to estimate whether the feature caused a change in lead rate.</li>
-<li>It makes treatment and control ads more comparable before exposure.</li>
 <li>It is better than a before/after comparison, which can be affected by seasonality, buyer demand, or changes in ad supply.</li>
 </ul>
 <p>Preferred randomization level: ad-level, assuming the feature affects individual ads and does not strongly change seller behavior across ads. If the feature is seller-side, seller-level randomization may be safer.</p>
@@ -7850,13 +7849,12 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Design-Risks">Design Risks<a class="anchor-link" href="#Design-Risks">¶</a></h3><p>Before treating the A/B gap as causal, I would validate four areas:</p>
-<ul>
-<li>Assignment integrity: confirm A/B assignment was random, consistently applied, and close to the planned allocation. Any assignment bug or sample-ratio mismatch could bias the result.</li>
-<li>Group comparability: check whether A and B are balanced on key ad and car attributes such as price, mileage, age, seller type, and placement timing. The dataset shows B differs from A on some dimensions, so part of the lift could reflect mix rather than product impact.</li>
-<li>Measurement consistency: confirm lead events are logged the same way in both groups and that missing, duplicate, or unassigned rows are handled using rules defined before reading outcomes.</li>
-<li>Marketplace side effects: monitor whether the feature shifts leads away from control ads or increases low-quality leads, duplicate leads, complaints, or seller/buyer friction.</li>
-</ul>
+<h3 id="1.1-Design-Risks">1.1 Design Risks<a class="anchor-link" href="#1.1-Design-Risks">¶</a></h3><p>Before treating the A/B gap as causal, I would validate:</p>
+<ol>
+<li><strong>Assignment integrity</strong>: confirm A/B assignment was random, consistently applied, and close to the planned allocation. Any assignment bug or sample-ratio mismatch could bias the result.</li>
+<li><strong>Group comparability</strong>: check whether A and B are balanced on key ad and car attributes such as price, mileage, age, seller type, and placement timing. The dataset shows B differs from A on some dimensions, so part of the lift could reflect mix rather than product impact.</li>
+<li><strong>Platform side effects</strong>: monitor whether the feature shifts leads away from control ads or increases low-quality leads, duplicate leads or complaints.</li>
+</ol>
 </div>
 </div>
 </div>
@@ -7865,29 +7863,20 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [35]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [54]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">display</span>
-
-<span class="n">helper_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">helper_dir</span> <span class="o">/</span> <span class="s2">"functions.py"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-    <span class="n">helper_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="s2">"assignments"</span> <span class="o">/</span> <span class="s2">"cars"</span>
-<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">helper_dir</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
-    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">helper_dir</span><span class="p">))</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">functions</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">helpers</span>
 
 <span class="n">helpers</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">reload</span><span class="p">(</span><span class="n">helpers</span><span class="p">)</span>
+<span class="n">pd</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">pd</span>
 
 <span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">"display.float_format"</span><span class="p">,</span> <span class="s2">"</span><span class="si">{:,.3f}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">)</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">"display.max_columns"</span><span class="p">,</span> <span class="mi">80</span><span class="p">)</span>
-<span class="n">helpers</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">"seaborn-v0_8-whitegrid"</span><span class="p">)</span>
 <span class="n">helpers</span><span class="o">.</span><span class="n">apply_plot_style</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -7901,7 +7890,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-Data-Readiness">2. Data Readiness<a class="anchor-link" href="#2.-Data-Readiness">¶</a></h2><p>Before comparing outcomes, I check whether the lead metrics and ad identifiers are reliable enough for analysis:</p>
+<h2 id="2.-Data-Quality-Checks">2. Data Quality Checks<a class="anchor-link" href="#2.-Data-Quality-Checks">¶</a></h2><p>Before comparing outcomes, I check whether the lead metrics and ad identifiers are reliable enough for analysis:</p>
 <ul>
 <li>Lead metrics are clean enough for analysis: almost no missing values and no negative values.</li>
 <li>Missing lead metrics are minimal: 9 rows have missing values in at least one lead column, so treating missing lead counts as zero has negligible impact.</li>
@@ -7915,7 +7904,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [36]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [55]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">raw_data</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">read_ab_test_data</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">DATA_PATH</span><span class="p">)</span>
@@ -7942,156 +7931,13 @@ whether this initiative has improved this metric?</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b2be57c9">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Dataset-Shape-and-Identifier-Quality">Dataset Shape and Identifier Quality<a class="anchor-link" href="#Dataset-Shape-and-Identifier-Quality">¶</a></h3><p>Quick check of row count, column count, full duplicates, and repeated ad IDs.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b25e0912">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [37]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">data_quality_checks</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)))</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-</style>
-<table id="T_7e1f2">
-<thead>
-<tr>
-<th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_7e1f2_level0_col0">Check</th>
-<th class="col_heading level0 col1" id="T_7e1f2_level0_col1">Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<th class="row_heading level0 row0" id="T_7e1f2_level0_row0">0</th>
-<td class="data row0 col0" id="T_7e1f2_row0_col0">Rows</td>
-<td class="data row0 col1" id="T_7e1f2_row0_col1">183,062</td>
-</tr>
-<tr>
-<th class="row_heading level0 row1" id="T_7e1f2_level0_row1">1</th>
-<td class="data row1 col0" id="T_7e1f2_row1_col0">Columns</td>
-<td class="data row1 col1" id="T_7e1f2_row1_col1">22</td>
-</tr>
-<tr>
-<th class="row_heading level0 row2" id="T_7e1f2_level0_row2">2</th>
-<td class="data row2 col0" id="T_7e1f2_row2_col0">Fully Duplicated Rows</td>
-<td class="data row2 col1" id="T_7e1f2_row2_col1">0</td>
-</tr>
-<tr>
-<th class="row_heading level0 row3" id="T_7e1f2_level0_row3">3</th>
-<td class="data row3 col0" id="T_7e1f2_row3_col0">Rows With Duplicated Ad ID</td>
-<td class="data row3 col1" id="T_7e1f2_row3_col1">10</td>
-</tr>
-<tr>
-<th class="row_heading level0 row4" id="T_7e1f2_level0_row4">4</th>
-<td class="data row4 col0" id="T_7e1f2_row4_col0">Unique Ad IDs</td>
-<td class="data row4 col1" id="T_7e1f2_row4_col1">183,057</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f3516b8f">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Undocumented-Fields">Undocumented Fields<a class="anchor-link" href="#Undocumented-Fields">¶</a></h3><p>Columns outside the core assignment schema are documented before deciding whether to use them.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=ff6634e5">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [38]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">undocumented_column_notes</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)))</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-</style>
-<table id="T_04424">
-<thead>
-<tr>
-<th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_04424_level0_col0">Column</th>
-<th class="col_heading level0 col1" id="T_04424_level0_col1">Note</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<th class="row_heading level0 row0" id="T_04424_level0_row0">0</th>
-<td class="data row0 col0" id="T_04424_row0_col0">Color</td>
-<td class="data row0 col1" id="T_04424_row0_col1">used as an optional car-color dimension</td>
-</tr>
-<tr>
-<th class="row_heading level0 row1" id="T_04424_level0_row1">1</th>
-<td class="data row1 col0" id="T_04424_row1_col0">Mileage</td>
-<td class="data row1 col1" id="T_04424_row1_col1">used as an optional mileage dimension</td>
-</tr>
-<tr>
-<th class="row_heading level0 row2" id="T_04424_level0_row2">2</th>
-<td class="data row2 col0" id="T_04424_row2_col0">Days Live</td>
-<td class="data row2 col1" id="T_04424_row2_col1">used as an optional ad-tenure dimension</td>
-</tr>
-<tr>
-<th class="row_heading level0 row3" id="T_04424_level0_row3">3</th>
-<td class="data row3 col0" id="T_04424_row3_col0">L2</td>
-<td class="data row3 col1" id="T_04424_row3_col1">not used; meaning is unclear</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-</div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=74be7f62">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Lead-Metric-Quality">Lead Metric Quality<a class="anchor-link" href="#Lead-Metric-Quality">¶</a></h3><p>Checks whether lead-event columns have missing, negative, or extreme values.</p>
+<h3 id="2.1-Lead-Metric-Quality">2.1 Lead Metric Quality<a class="anchor-link" href="#2.1-Lead-Metric-Quality">¶</a></h3><p>Checks whether lead-event columns have missing, negative, or extreme values.</p>
 </div>
 </div>
 </div>
@@ -8100,7 +7946,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [39]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [56]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">lead_metric_quality</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)))</span>
@@ -8118,54 +7964,54 @@ whether this initiative has improved this metric?</p>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_d8d31">
+<table id="T_3f2f0">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_d8d31_level0_col0">Metric</th>
-<th class="col_heading level0 col1" id="T_d8d31_level0_col1">Missing Rows</th>
-<th class="col_heading level0 col2" id="T_d8d31_level0_col2">Missing %</th>
-<th class="col_heading level0 col3" id="T_d8d31_level0_col3">Negative Rows</th>
-<th class="col_heading level0 col4" id="T_d8d31_level0_col4">Zero Rows</th>
-<th class="col_heading level0 col5" id="T_d8d31_level0_col5">Max Value</th>
+<th class="col_heading level0 col0" id="T_3f2f0_level0_col0">Metric</th>
+<th class="col_heading level0 col1" id="T_3f2f0_level0_col1">Missing Rows</th>
+<th class="col_heading level0 col2" id="T_3f2f0_level0_col2">Missing %</th>
+<th class="col_heading level0 col3" id="T_3f2f0_level0_col3">Negative Rows</th>
+<th class="col_heading level0 col4" id="T_3f2f0_level0_col4">Zero Rows</th>
+<th class="col_heading level0 col5" id="T_3f2f0_level0_col5">Max Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_d8d31_level0_row0">0</th>
-<td class="data row0 col0" id="T_d8d31_row0_col0">Tel Clicks</td>
-<td class="data row0 col1" id="T_d8d31_row0_col1">9</td>
-<td class="data row0 col2" id="T_d8d31_row0_col2">0.000</td>
-<td class="data row0 col3" id="T_d8d31_row0_col3">0</td>
-<td class="data row0 col4" id="T_d8d31_row0_col4">125,624</td>
-<td class="data row0 col5" id="T_d8d31_row0_col5">162</td>
+<th class="row_heading level0 row0" id="T_3f2f0_level0_row0">0</th>
+<td class="data row0 col0" id="T_3f2f0_row0_col0">Tel Clicks</td>
+<td class="data row0 col1" id="T_3f2f0_row0_col1">9</td>
+<td class="data row0 col2" id="T_3f2f0_row0_col2">0.000</td>
+<td class="data row0 col3" id="T_3f2f0_row0_col3">0</td>
+<td class="data row0 col4" id="T_3f2f0_row0_col4">125,624</td>
+<td class="data row0 col5" id="T_3f2f0_row0_col5">162</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_d8d31_level0_row1">1</th>
-<td class="data row1 col0" id="T_d8d31_row1_col0">Bids</td>
-<td class="data row1 col1" id="T_d8d31_row1_col1">9</td>
-<td class="data row1 col2" id="T_d8d31_row1_col2">0.000</td>
-<td class="data row1 col3" id="T_d8d31_row1_col3">0</td>
-<td class="data row1 col4" id="T_d8d31_row1_col4">152,145</td>
-<td class="data row1 col5" id="T_d8d31_row1_col5">124</td>
+<th class="row_heading level0 row1" id="T_3f2f0_level0_row1">1</th>
+<td class="data row1 col0" id="T_3f2f0_row1_col0">Bids</td>
+<td class="data row1 col1" id="T_3f2f0_row1_col1">9</td>
+<td class="data row1 col2" id="T_3f2f0_row1_col2">0.000</td>
+<td class="data row1 col3" id="T_3f2f0_row1_col3">0</td>
+<td class="data row1 col4" id="T_3f2f0_row1_col4">152,145</td>
+<td class="data row1 col5" id="T_3f2f0_row1_col5">124</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_d8d31_level0_row2">2</th>
-<td class="data row2 col0" id="T_d8d31_row2_col0">Questions</td>
-<td class="data row2 col1" id="T_d8d31_row2_col1">0</td>
-<td class="data row2 col2" id="T_d8d31_row2_col2">0.000</td>
-<td class="data row2 col3" id="T_d8d31_row2_col3">0</td>
-<td class="data row2 col4" id="T_d8d31_row2_col4">122,577</td>
-<td class="data row2 col5" id="T_d8d31_row2_col5">282</td>
+<th class="row_heading level0 row2" id="T_3f2f0_level0_row2">2</th>
+<td class="data row2 col0" id="T_3f2f0_row2_col0">Questions</td>
+<td class="data row2 col1" id="T_3f2f0_row2_col1">0</td>
+<td class="data row2 col2" id="T_3f2f0_row2_col2">0.000</td>
+<td class="data row2 col3" id="T_3f2f0_row2_col3">0</td>
+<td class="data row2 col4" id="T_3f2f0_row2_col4">122,577</td>
+<td class="data row2 col5" id="T_3f2f0_row2_col5">282</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_d8d31_level0_row3">3</th>
-<td class="data row3 col0" id="T_d8d31_row3_col0">Web Clicks</td>
-<td class="data row3 col1" id="T_d8d31_row3_col1">9</td>
-<td class="data row3 col2" id="T_d8d31_row3_col2">0.000</td>
-<td class="data row3 col3" id="T_d8d31_row3_col3">0</td>
-<td class="data row3 col4" id="T_d8d31_row3_col4">85,122</td>
-<td class="data row3 col5" id="T_d8d31_row3_col5">410</td>
+<th class="row_heading level0 row3" id="T_3f2f0_level0_row3">3</th>
+<td class="data row3 col0" id="T_3f2f0_row3_col0">Web Clicks</td>
+<td class="data row3 col1" id="T_3f2f0_row3_col1">9</td>
+<td class="data row3 col2" id="T_3f2f0_row3_col2">0.000</td>
+<td class="data row3 col3" id="T_3f2f0_row3_col3">0</td>
+<td class="data row3 col4" id="T_3f2f0_row3_col4">85,122</td>
+<td class="data row3 col5" id="T_3f2f0_row3_col5">410</td>
 </tr>
 </tbody>
 </table>
@@ -8180,7 +8026,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Missing-Values">Missing Values<a class="anchor-link" href="#Missing-Values">¶</a></h3><p>Shows which optional columns have missing values.</p>
+<h3 id="2.2-Missing-Values">2.2 Missing Values<a class="anchor-link" href="#2.2-Missing-Values">¶</a></h3><p>Shows which optional columns have missing values.</p>
 </div>
 </div>
 </div>
@@ -8189,7 +8035,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [40]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [57]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">column_quality_summary</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"missing_rows &gt; 0 and column != 'group'"</span><span class="p">),</span> <span class="n">max_rows</span><span class="o">=</span><span class="mi">12</span><span class="p">))</span>
@@ -8207,169 +8053,101 @@ whether this initiative has improved this metric?</p>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_722e6">
+<table id="T_b2686">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_722e6_level0_col0">Column</th>
-<th class="col_heading level0 col1" id="T_722e6_level0_col1">Dtype</th>
-<th class="col_heading level0 col2" id="T_722e6_level0_col2">Missing Rows</th>
-<th class="col_heading level0 col3" id="T_722e6_level0_col3">Missing %</th>
-<th class="col_heading level0 col4" id="T_722e6_level0_col4">Unique</th>
+<th class="col_heading level0 col0" id="T_b2686_level0_col0">Column</th>
+<th class="col_heading level0 col1" id="T_b2686_level0_col1">Dtype</th>
+<th class="col_heading level0 col2" id="T_b2686_level0_col2">Missing Rows</th>
+<th class="col_heading level0 col3" id="T_b2686_level0_col3">Missing %</th>
+<th class="col_heading level0 col4" id="T_b2686_level0_col4">Unique</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_722e6_level0_row0">0</th>
-<td class="data row0 col0" id="T_722e6_row0_col0">Energy Label</td>
-<td class="data row0 col1" id="T_722e6_row0_col1">str</td>
-<td class="data row0 col2" id="T_722e6_row0_col2">49,384</td>
-<td class="data row0 col3" id="T_722e6_row0_col3">0.270</td>
-<td class="data row0 col4" id="T_722e6_row0_col4">7</td>
+<th class="row_heading level0 row0" id="T_b2686_level0_row0">0</th>
+<td class="data row0 col0" id="T_b2686_row0_col0">Energy Label</td>
+<td class="data row0 col1" id="T_b2686_row0_col1">str</td>
+<td class="data row0 col2" id="T_b2686_row0_col2">49,384</td>
+<td class="data row0 col3" id="T_b2686_row0_col3">0.270</td>
+<td class="data row0 col4" id="T_b2686_row0_col4">7</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_722e6_level0_row1">1</th>
-<td class="data row1 col0" id="T_722e6_row1_col0">Body Type</td>
-<td class="data row1 col1" id="T_722e6_row1_col1">str</td>
-<td class="data row1 col2" id="T_722e6_row1_col2">17,851</td>
-<td class="data row1 col3" id="T_722e6_row1_col3">0.098</td>
-<td class="data row1 col4" id="T_722e6_row1_col4">8</td>
+<th class="row_heading level0 row1" id="T_b2686_level0_row1">1</th>
+<td class="data row1 col0" id="T_b2686_row1_col0">Body Type</td>
+<td class="data row1 col1" id="T_b2686_row1_col1">str</td>
+<td class="data row1 col2" id="T_b2686_row1_col2">17,851</td>
+<td class="data row1 col3" id="T_b2686_row1_col3">0.098</td>
+<td class="data row1 col4" id="T_b2686_row1_col4">8</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_722e6_level0_row2">2</th>
-<td class="data row2 col0" id="T_722e6_row2_col0">Seats</td>
-<td class="data row2 col1" id="T_722e6_row2_col1">Int64</td>
-<td class="data row2 col2" id="T_722e6_row2_col2">11,743</td>
-<td class="data row2 col3" id="T_722e6_row2_col3">0.064</td>
-<td class="data row2 col4" id="T_722e6_row2_col4">16</td>
+<th class="row_heading level0 row2" id="T_b2686_level0_row2">2</th>
+<td class="data row2 col0" id="T_b2686_row2_col0">Seats</td>
+<td class="data row2 col1" id="T_b2686_row2_col1">Int64</td>
+<td class="data row2 col2" id="T_b2686_row2_col2">11,743</td>
+<td class="data row2 col3" id="T_b2686_row2_col3">0.064</td>
+<td class="data row2 col4" id="T_b2686_row2_col4">16</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_722e6_level0_row3">4</th>
-<td class="data row3 col0" id="T_722e6_row3_col0">Doors</td>
-<td class="data row3 col1" id="T_722e6_row3_col1">Int64</td>
-<td class="data row3 col2" id="T_722e6_row3_col2">5,375</td>
-<td class="data row3 col3" id="T_722e6_row3_col3">0.029</td>
-<td class="data row3 col4" id="T_722e6_row3_col4">9</td>
+<th class="row_heading level0 row3" id="T_b2686_level0_row3">4</th>
+<td class="data row3 col0" id="T_b2686_row3_col0">Doors</td>
+<td class="data row3 col1" id="T_b2686_row3_col1">Int64</td>
+<td class="data row3 col2" id="T_b2686_row3_col2">5,375</td>
+<td class="data row3 col3" id="T_b2686_row3_col3">0.029</td>
+<td class="data row3 col4" id="T_b2686_row3_col4">9</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_722e6_level0_row4">5</th>
-<td class="data row4 col0" id="T_722e6_row4_col0">Model</td>
-<td class="data row4 col1" id="T_722e6_row4_col1">str</td>
-<td class="data row4 col2" id="T_722e6_row4_col2">925</td>
-<td class="data row4 col3" id="T_722e6_row4_col3">0.005</td>
-<td class="data row4 col4" id="T_722e6_row4_col4">2,447</td>
+<th class="row_heading level0 row4" id="T_b2686_level0_row4">5</th>
+<td class="data row4 col0" id="T_b2686_row4_col0">Model</td>
+<td class="data row4 col1" id="T_b2686_row4_col1">str</td>
+<td class="data row4 col2" id="T_b2686_row4_col2">925</td>
+<td class="data row4 col3" id="T_b2686_row4_col3">0.005</td>
+<td class="data row4 col4" id="T_b2686_row4_col4">2,447</td>
 </tr>
 <tr>
-<th class="row_heading level0 row5" id="T_722e6_level0_row5">6</th>
-<td class="data row5 col0" id="T_722e6_row5_col0">Emissions</td>
-<td class="data row5 col1" id="T_722e6_row5_col1">Int64</td>
-<td class="data row5 col2" id="T_722e6_row5_col2">191</td>
-<td class="data row5 col3" id="T_722e6_row5_col3">0.001</td>
-<td class="data row5 col4" id="T_722e6_row5_col4">356</td>
+<th class="row_heading level0 row5" id="T_b2686_level0_row5">6</th>
+<td class="data row5 col0" id="T_b2686_row5_col0">Emissions</td>
+<td class="data row5 col1" id="T_b2686_row5_col1">Int64</td>
+<td class="data row5 col2" id="T_b2686_row5_col2">191</td>
+<td class="data row5 col3" id="T_b2686_row5_col3">0.001</td>
+<td class="data row5 col4" id="T_b2686_row5_col4">356</td>
 </tr>
 <tr>
-<th class="row_heading level0 row6" id="T_722e6_level0_row6">7</th>
-<td class="data row6 col0" id="T_722e6_row6_col0">Bids</td>
-<td class="data row6 col1" id="T_722e6_row6_col1">Int64</td>
-<td class="data row6 col2" id="T_722e6_row6_col2">9</td>
-<td class="data row6 col3" id="T_722e6_row6_col3">0.000</td>
-<td class="data row6 col4" id="T_722e6_row6_col4">42</td>
+<th class="row_heading level0 row6" id="T_b2686_level0_row6">7</th>
+<td class="data row6 col0" id="T_b2686_row6_col0">Bids</td>
+<td class="data row6 col1" id="T_b2686_row6_col1">Int64</td>
+<td class="data row6 col2" id="T_b2686_row6_col2">9</td>
+<td class="data row6 col3" id="T_b2686_row6_col3">0.000</td>
+<td class="data row6 col4" id="T_b2686_row6_col4">42</td>
 </tr>
 <tr>
-<th class="row_heading level0 row7" id="T_722e6_level0_row7">8</th>
-<td class="data row7 col0" id="T_722e6_row7_col0">Tel Clicks</td>
-<td class="data row7 col1" id="T_722e6_row7_col1">Int64</td>
-<td class="data row7 col2" id="T_722e6_row7_col2">9</td>
-<td class="data row7 col3" id="T_722e6_row7_col3">0.000</td>
-<td class="data row7 col4" id="T_722e6_row7_col4">65</td>
+<th class="row_heading level0 row7" id="T_b2686_level0_row7">8</th>
+<td class="data row7 col0" id="T_b2686_row7_col0">Tel Clicks</td>
+<td class="data row7 col1" id="T_b2686_row7_col1">Int64</td>
+<td class="data row7 col2" id="T_b2686_row7_col2">9</td>
+<td class="data row7 col3" id="T_b2686_row7_col3">0.000</td>
+<td class="data row7 col4" id="T_b2686_row7_col4">65</td>
 </tr>
 <tr>
-<th class="row_heading level0 row8" id="T_722e6_level0_row8">9</th>
-<td class="data row8 col0" id="T_722e6_row8_col0">Web Clicks</td>
-<td class="data row8 col1" id="T_722e6_row8_col1">Int64</td>
-<td class="data row8 col2" id="T_722e6_row8_col2">9</td>
-<td class="data row8 col3" id="T_722e6_row8_col3">0.000</td>
-<td class="data row8 col4" id="T_722e6_row8_col4">154</td>
+<th class="row_heading level0 row8" id="T_b2686_level0_row8">9</th>
+<td class="data row8 col0" id="T_b2686_row8_col0">Web Clicks</td>
+<td class="data row8 col1" id="T_b2686_row8_col1">Int64</td>
+<td class="data row8 col2" id="T_b2686_row8_col2">9</td>
+<td class="data row8 col3" id="T_b2686_row8_col3">0.000</td>
+<td class="data row8 col4" id="T_b2686_row8_col4">154</td>
 </tr>
 <tr>
-<th class="row_heading level0 row9" id="T_722e6_level0_row9">10</th>
-<td class="data row9 col0" id="T_722e6_row9_col0">Price</td>
-<td class="data row9 col1" id="T_722e6_row9_col1">Int64</td>
-<td class="data row9 col2" id="T_722e6_row9_col2">7</td>
-<td class="data row9 col3" id="T_722e6_row9_col3">0.000</td>
-<td class="data row9 col4" id="T_722e6_row9_col4">7,522</td>
+<th class="row_heading level0 row9" id="T_b2686_level0_row9">10</th>
+<td class="data row9 col0" id="T_b2686_row9_col0">Price</td>
+<td class="data row9 col1" id="T_b2686_row9_col1">Int64</td>
+<td class="data row9 col2" id="T_b2686_row9_col2">7</td>
+<td class="data row9 col3" id="T_b2686_row9_col3">0.000</td>
+<td class="data row9 col4" id="T_b2686_row9_col4">7,522</td>
 </tr>
 </tbody>
 </table>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b04e6514">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Next, check lead-event coverage. The chart compares each channel with the combined <code>any lead</code> KPI.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b3b2fcd0">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [41]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">helpers</span><span class="o">.</span><span class="n">plot_lead_channel_coverage</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span>
-<span class="n">helpers</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedImage jp-OutputArea-output" tabindex="0">
-<img alt="No description has been provided for this image" class="" src="data:image/png;base64,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"/>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3219af41">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<ul>
-<li>The chart shows each lead channel is much smaller than <code>Any Lead</code>.</li>
-<li>This supports using the combined KPI as the primary metric.</li>
-<li>Later checks still show lead volume by channel.</li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d91de905">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<ul>
-<li>Lead metrics have very few missing values and no negative values.</li>
-<li>Some undocumented fields are useful for balance and segment checks.</li>
-<li><code>l2</code> is excluded because its meaning is unclear.</li>
-</ul>
 </div>
 </div>
 </div>
@@ -8380,293 +8158,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Duplicated-Ad-IDs">Duplicated Ad IDs<a class="anchor-link" href="#Duplicated-Ad-IDs">¶</a></h3><p>There are 5 duplicated <code>src_ad_id</code> values, covering 10 rows.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3e228c03">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Duplicated-Ad-Rows">Duplicated Ad Rows<a class="anchor-link" href="#Duplicated-Ad-Rows">¶</a></h3><p>Lists the small set of repeated ad IDs for direct inspection.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9818af27">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [42]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">duplicated_ad_id_rows</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)))</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-</style>
-<table id="T_9d656">
-<thead>
-<tr>
-<th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_9d656_level0_col0">Ad ID</th>
-<th class="col_heading level0 col1" id="T_9d656_level0_col1">Tel Clicks</th>
-<th class="col_heading level0 col2" id="T_9d656_level0_col2">Bids</th>
-<th class="col_heading level0 col3" id="T_9d656_level0_col3">Body Type</th>
-<th class="col_heading level0 col4" id="T_9d656_level0_col4">Photos</th>
-<th class="col_heading level0 col5" id="T_9d656_level0_col5">Doors</th>
-<th class="col_heading level0 col6" id="T_9d656_level0_col6">Questions</th>
-<th class="col_heading level0 col7" id="T_9d656_level0_col7">Build Year</th>
-<th class="col_heading level0 col8" id="T_9d656_level0_col8">Emissions</th>
-<th class="col_heading level0 col9" id="T_9d656_level0_col9">Energy Label</th>
-<th class="col_heading level0 col10" id="T_9d656_level0_col10">Brand</th>
-<th class="col_heading level0 col11" id="T_9d656_level0_col11">Start Date</th>
-<th class="col_heading level0 col12" id="T_9d656_level0_col12">Power</th>
-<th class="col_heading level0 col13" id="T_9d656_level0_col13">Web Clicks</th>
-<th class="col_heading level0 col14" id="T_9d656_level0_col14">Model</th>
-<th class="col_heading level0 col15" id="T_9d656_level0_col15">Seats</th>
-<th class="col_heading level0 col16" id="T_9d656_level0_col16">Price</th>
-<th class="col_heading level0 col17" id="T_9d656_level0_col17">Test Group</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<th class="row_heading level0 row0" id="T_9d656_level0_row0">0</th>
-<td class="data row0 col0" id="T_9d656_row0_col0">1011548826</td>
-<td class="data row0 col1" id="T_9d656_row0_col1">0</td>
-<td class="data row0 col2" id="T_9d656_row0_col2">0</td>
-<td class="data row0 col3" id="T_9d656_row0_col3">MPV</td>
-<td class="data row0 col4" id="T_9d656_row0_col4">18</td>
-<td class="data row0 col5" id="T_9d656_row0_col5">5</td>
-<td class="data row0 col6" id="T_9d656_row0_col6">0</td>
-<td class="data row0 col7" id="T_9d656_row0_col7">2003</td>
-<td class="data row0 col8" id="T_9d656_row0_col8">152</td>
-<td class="data row0 col9" id="T_9d656_row0_col9">D</td>
-<td class="data row0 col10" id="T_9d656_row0_col10">RENAULT</td>
-<td class="data row0 col11" id="T_9d656_row0_col11">2016-11-25</td>
-<td class="data row0 col12" id="T_9d656_row0_col12">59</td>
-<td class="data row0 col13" id="T_9d656_row0_col13">1</td>
-<td class="data row0 col14" id="T_9d656_row0_col14">Scenic</td>
-<td class="data row0 col15" id="T_9d656_row0_col15">5</td>
-<td class="data row0 col16" id="T_9d656_row0_col16">22,500</td>
-<td class="data row0 col17" id="T_9d656_row0_col17">A</td>
-</tr>
-<tr>
-<th class="row_heading level0 row1" id="T_9d656_level0_row1">1</th>
-<td class="data row1 col0" id="T_9d656_row1_col0">1011548826</td>
-<td class="data row1 col1" id="T_9d656_row1_col1">0</td>
-<td class="data row1 col2" id="T_9d656_row1_col2">0</td>
-<td class="data row1 col3" id="T_9d656_row1_col3">Hatchback (3/5-deurs)</td>
-<td class="data row1 col4" id="T_9d656_row1_col4">14</td>
-<td class="data row1 col5" id="T_9d656_row1_col5">4</td>
-<td class="data row1 col6" id="T_9d656_row1_col6">0</td>
-<td class="data row1 col7" id="T_9d656_row1_col7">2005</td>
-<td class="data row1 col8" id="T_9d656_row1_col8">169</td>
-<td class="data row1 col9" id="T_9d656_row1_col9">C</td>
-<td class="data row1 col10" id="T_9d656_row1_col10">CITROEN</td>
-<td class="data row1 col11" id="T_9d656_row1_col11">2016-11-25</td>
-<td class="data row1 col12" id="T_9d656_row1_col12">80</td>
-<td class="data row1 col13" id="T_9d656_row1_col13">0</td>
-<td class="data row1 col14" id="T_9d656_row1_col14">C4</td>
-<td class="data row1 col15" id="T_9d656_row1_col15">5</td>
-<td class="data row1 col16" id="T_9d656_row1_col16">52,500</td>
-<td class="data row1 col17" id="T_9d656_row1_col17">B</td>
-</tr>
-<tr>
-<th class="row_heading level0 row2" id="T_9d656_level0_row2">2</th>
-<td class="data row2 col0" id="T_9d656_row2_col0">1027581466</td>
-<td class="data row2 col1" id="T_9d656_row2_col1">0</td>
-<td class="data row2 col2" id="T_9d656_row2_col2">0</td>
-<td class="data row2 col3" id="T_9d656_row2_col3">Hatchback (3/5-deurs)</td>
-<td class="data row2 col4" id="T_9d656_row2_col4">13</td>
-<td class="data row2 col5" id="T_9d656_row2_col5">5</td>
-<td class="data row2 col6" id="T_9d656_row2_col6">0</td>
-<td class="data row2 col7" id="T_9d656_row2_col7">2010</td>
-<td class="data row2 col8" id="T_9d656_row2_col8">0</td>
-<td class="data row2 col9" id="T_9d656_row2_col9">NaN</td>
-<td class="data row2 col10" id="T_9d656_row2_col10">SEAT</td>
-<td class="data row2 col11" id="T_9d656_row2_col11">2016-11-06</td>
-<td class="data row2 col12" id="T_9d656_row2_col12">118</td>
-<td class="data row2 col13" id="T_9d656_row2_col13">2</td>
-<td class="data row2 col14" id="T_9d656_row2_col14">Leon</td>
-<td class="data row2 col15" id="T_9d656_row2_col15">5</td>
-<td class="data row2 col16" id="T_9d656_row2_col16">117,500</td>
-<td class="data row2 col17" id="T_9d656_row2_col17">A</td>
-</tr>
-<tr>
-<th class="row_heading level0 row3" id="T_9d656_level0_row3">3</th>
-<td class="data row3 col0" id="T_9d656_row3_col0">1027581466</td>
-<td class="data row3 col1" id="T_9d656_row3_col1">0</td>
-<td class="data row3 col2" id="T_9d656_row3_col2">0</td>
-<td class="data row3 col3" id="T_9d656_row3_col3">MPV</td>
-<td class="data row3 col4" id="T_9d656_row3_col4">24</td>
-<td class="data row3 col5" id="T_9d656_row3_col5">4</td>
-<td class="data row3 col6" id="T_9d656_row3_col6">0</td>
-<td class="data row3 col7" id="T_9d656_row3_col7">2008</td>
-<td class="data row3 col8" id="T_9d656_row3_col8">155</td>
-<td class="data row3 col9" id="T_9d656_row3_col9">C</td>
-<td class="data row3 col10" id="T_9d656_row3_col10">MERCEDES</td>
-<td class="data row3 col11" id="T_9d656_row3_col11">2016-11-06</td>
-<td class="data row3 col12" id="T_9d656_row3_col12">70</td>
-<td class="data row3 col13" id="T_9d656_row3_col13">0</td>
-<td class="data row3 col14" id="T_9d656_row3_col14">A-Klasse</td>
-<td class="data row3 col15" id="T_9d656_row3_col15">5</td>
-<td class="data row3 col16" id="T_9d656_row3_col16">79,500</td>
-<td class="data row3 col17" id="T_9d656_row3_col17">B</td>
-</tr>
-<tr>
-<th class="row_heading level0 row4" id="T_9d656_level0_row4">4</th>
-<td class="data row4 col0" id="T_9d656_row4_col0">1045227572</td>
-<td class="data row4 col1" id="T_9d656_row4_col1">0</td>
-<td class="data row4 col2" id="T_9d656_row4_col2">0</td>
-<td class="data row4 col3" id="T_9d656_row4_col3">Hatchback (3/5-deurs)</td>
-<td class="data row4 col4" id="T_9d656_row4_col4">24</td>
-<td class="data row4 col5" id="T_9d656_row4_col5">5</td>
-<td class="data row4 col6" id="T_9d656_row4_col6">0</td>
-<td class="data row4 col7" id="T_9d656_row4_col7">2012</td>
-<td class="data row4 col8" id="T_9d656_row4_col8">134</td>
-<td class="data row4 col9" id="T_9d656_row4_col9">C</td>
-<td class="data row4 col10" id="T_9d656_row4_col10">OPEL</td>
-<td class="data row4 col11" id="T_9d656_row4_col11">2016-11-26</td>
-<td class="data row4 col12" id="T_9d656_row4_col12">74</td>
-<td class="data row4 col13" id="T_9d656_row4_col13">0</td>
-<td class="data row4 col14" id="T_9d656_row4_col14">CORSA</td>
-<td class="data row4 col15" id="T_9d656_row4_col15">5</td>
-<td class="data row4 col16" id="T_9d656_row4_col16">89,500</td>
-<td class="data row4 col17" id="T_9d656_row4_col17">A</td>
-</tr>
-<tr>
-<th class="row_heading level0 row5" id="T_9d656_level0_row5">5</th>
-<td class="data row5 col0" id="T_9d656_row5_col0">1045227572</td>
-<td class="data row5 col1" id="T_9d656_row5_col1">0</td>
-<td class="data row5 col2" id="T_9d656_row5_col2">0</td>
-<td class="data row5 col3" id="T_9d656_row5_col3">Terreinwagen</td>
-<td class="data row5 col4" id="T_9d656_row5_col4">24</td>
-<td class="data row5 col5" id="T_9d656_row5_col5">5</td>
-<td class="data row5 col6" id="T_9d656_row5_col6">0</td>
-<td class="data row5 col7" id="T_9d656_row5_col7">2013</td>
-<td class="data row5 col8" id="T_9d656_row5_col8">168</td>
-<td class="data row5 col9" id="T_9d656_row5_col9">D</td>
-<td class="data row5 col10" id="T_9d656_row5_col10">MINI</td>
-<td class="data row5 col11" id="T_9d656_row5_col11">2016-11-26</td>
-<td class="data row5 col12" id="T_9d656_row5_col12">90</td>
-<td class="data row5 col13" id="T_9d656_row5_col13">1</td>
-<td class="data row5 col14" id="T_9d656_row5_col14">Countryman</td>
-<td class="data row5 col15" id="T_9d656_row5_col15">5</td>
-<td class="data row5 col16" id="T_9d656_row5_col16">269,500</td>
-<td class="data row5 col17" id="T_9d656_row5_col17">B</td>
-</tr>
-<tr>
-<th class="row_heading level0 row6" id="T_9d656_level0_row6">6</th>
-<td class="data row6 col0" id="T_9d656_row6_col0">1054003502</td>
-<td class="data row6 col1" id="T_9d656_row6_col1">0</td>
-<td class="data row6 col2" id="T_9d656_row6_col2">0</td>
-<td class="data row6 col3" id="T_9d656_row6_col3">Stationwagon</td>
-<td class="data row6 col4" id="T_9d656_row6_col4">24</td>
-<td class="data row6 col5" id="T_9d656_row6_col5">5</td>
-<td class="data row6 col6" id="T_9d656_row6_col6">0</td>
-<td class="data row6 col7" id="T_9d656_row6_col7">2005</td>
-<td class="data row6 col8" id="T_9d656_row6_col8">235</td>
-<td class="data row6 col9" id="T_9d656_row6_col9">F</td>
-<td class="data row6 col10" id="T_9d656_row6_col10">SAAB</td>
-<td class="data row6 col11" id="T_9d656_row6_col11">2016-11-19</td>
-<td class="data row6 col12" id="T_9d656_row6_col12">154</td>
-<td class="data row6 col13" id="T_9d656_row6_col13">2</td>
-<td class="data row6 col14" id="T_9d656_row6_col14">3-Sep</td>
-<td class="data row6 col15" id="T_9d656_row6_col15">5</td>
-<td class="data row6 col16" id="T_9d656_row6_col16">64,000</td>
-<td class="data row6 col17" id="T_9d656_row6_col17">A</td>
-</tr>
-<tr>
-<th class="row_heading level0 row7" id="T_9d656_level0_row7">7</th>
-<td class="data row7 col0" id="T_9d656_row7_col0">1054003502</td>
-<td class="data row7 col1" id="T_9d656_row7_col1">1</td>
-<td class="data row7 col2" id="T_9d656_row7_col2">0</td>
-<td class="data row7 col3" id="T_9d656_row7_col3">Sedan (2/4-deurs)</td>
-<td class="data row7 col4" id="T_9d656_row7_col4">11</td>
-<td class="data row7 col5" id="T_9d656_row7_col5">4</td>
-<td class="data row7 col6" id="T_9d656_row7_col6">0</td>
-<td class="data row7 col7" id="T_9d656_row7_col7">2006</td>
-<td class="data row7 col8" id="T_9d656_row7_col8">186</td>
-<td class="data row7 col9" id="T_9d656_row7_col9">C</td>
-<td class="data row7 col10" id="T_9d656_row7_col10">AUDI</td>
-<td class="data row7 col11" id="T_9d656_row7_col11">2016-11-19</td>
-<td class="data row7 col12" id="T_9d656_row7_col12">103</td>
-<td class="data row7 col13" id="T_9d656_row7_col13">2</td>
-<td class="data row7 col14" id="T_9d656_row7_col14">A6</td>
-<td class="data row7 col15" id="T_9d656_row7_col15">5</td>
-<td class="data row7 col16" id="T_9d656_row7_col16">73,900</td>
-<td class="data row7 col17" id="T_9d656_row7_col17">A</td>
-</tr>
-<tr>
-<th class="row_heading level0 row8" id="T_9d656_level0_row8">8</th>
-<td class="data row8 col0" id="T_9d656_row8_col0">1072325510</td>
-<td class="data row8 col1" id="T_9d656_row8_col1">0</td>
-<td class="data row8 col2" id="T_9d656_row8_col2">0</td>
-<td class="data row8 col3" id="T_9d656_row8_col3">Hatchback (3/5-deurs)</td>
-<td class="data row8 col4" id="T_9d656_row8_col4">12</td>
-<td class="data row8 col5" id="T_9d656_row8_col5">3</td>
-<td class="data row8 col6" id="T_9d656_row8_col6">0</td>
-<td class="data row8 col7" id="T_9d656_row8_col7">2013</td>
-<td class="data row8 col8" id="T_9d656_row8_col8">92</td>
-<td class="data row8 col9" id="T_9d656_row8_col9">A</td>
-<td class="data row8 col10" id="T_9d656_row8_col10">FIAT</td>
-<td class="data row8 col11" id="T_9d656_row8_col11">2016-11-07</td>
-<td class="data row8 col12" id="T_9d656_row8_col12">63</td>
-<td class="data row8 col13" id="T_9d656_row8_col13">0</td>
-<td class="data row8 col14" id="T_9d656_row8_col14">500</td>
-<td class="data row8 col15" id="T_9d656_row8_col15">4</td>
-<td class="data row8 col16" id="T_9d656_row8_col16">99,450</td>
-<td class="data row8 col17" id="T_9d656_row8_col17">A</td>
-</tr>
-<tr>
-<th class="row_heading level0 row9" id="T_9d656_level0_row9">9</th>
-<td class="data row9 col0" id="T_9d656_row9_col0">1072325510</td>
-<td class="data row9 col1" id="T_9d656_row9_col1">0</td>
-<td class="data row9 col2" id="T_9d656_row9_col2">0</td>
-<td class="data row9 col3" id="T_9d656_row9_col3">Cabriolet</td>
-<td class="data row9 col4" id="T_9d656_row9_col4">24</td>
-<td class="data row9 col5" id="T_9d656_row9_col5">2</td>
-<td class="data row9 col6" id="T_9d656_row9_col6">0</td>
-<td class="data row9 col7" id="T_9d656_row9_col7">2000</td>
-<td class="data row9 col8" id="T_9d656_row9_col8">294</td>
-<td class="data row9 col9" id="T_9d656_row9_col9">NaN</td>
-<td class="data row9 col10" id="T_9d656_row9_col10">CHEVROLET</td>
-<td class="data row9 col11" id="T_9d656_row9_col11">2016-11-07</td>
-<td class="data row9 col12" id="T_9d656_row9_col12">142</td>
-<td class="data row9 col13" id="T_9d656_row9_col13">3</td>
-<td class="data row9 col14" id="T_9d656_row9_col14">Camaro</td>
-<td class="data row9 col15" id="T_9d656_row9_col15">4</td>
-<td class="data row9 col16" id="T_9d656_row9_col16">119,000</td>
-<td class="data row9 col17" id="T_9d656_row9_col17">B</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a98c19f3">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Duplicate-ID-Differences">Duplicate-ID Differences<a class="anchor-link" href="#Duplicate-ID-Differences">¶</a></h3><p>Summarizes which fields differ within each repeated ad ID.</p>
+<h3 id="2.3-Duplicated-Ad-IDs">2.3 Duplicated Ad IDs<a class="anchor-link" href="#2.3-Duplicated-Ad-IDs">¶</a></h3><p>There are 5 duplicated <code>src_ad_id</code> values, covering 10 rows. The summary below is enough to show the issue: repeated IDs refer to rows with different car attributes, so they are not full duplicate rows.</p>
 </div>
 </div>
 </div>
@@ -8675,7 +8167,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [43]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [58]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">duplicated_ad_id_differences</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)))</span>
@@ -8693,51 +8185,51 @@ whether this initiative has improved this metric?</p>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_abaf9">
+<table id="T_bddb0">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_abaf9_level0_col0">Ad ID</th>
-<th class="col_heading level0 col1" id="T_abaf9_level0_col1">Rows</th>
-<th class="col_heading level0 col2" id="T_abaf9_level0_col2">Groups Seen</th>
-<th class="col_heading level0 col3" id="T_abaf9_level0_col3">Varying Columns</th>
+<th class="col_heading level0 col0" id="T_bddb0_level0_col0">Ad ID</th>
+<th class="col_heading level0 col1" id="T_bddb0_level0_col1">Rows</th>
+<th class="col_heading level0 col2" id="T_bddb0_level0_col2">Groups Seen</th>
+<th class="col_heading level0 col3" id="T_bddb0_level0_col3">Varying Columns</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_abaf9_level0_row0">0</th>
-<td class="data row0 col0" id="T_abaf9_row0_col0">1011548826</td>
-<td class="data row0 col1" id="T_abaf9_row0_col1">2</td>
-<td class="data row0 col2" id="T_abaf9_row0_col2">A, B</td>
-<td class="data row0 col3" id="T_abaf9_row0_col3">carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
+<th class="row_heading level0 row0" id="T_bddb0_level0_row0">0</th>
+<td class="data row0 col0" id="T_bddb0_row0_col0">1011548826</td>
+<td class="data row0 col1" id="T_bddb0_row0_col1">2</td>
+<td class="data row0 col2" id="T_bddb0_row0_col2">A, B</td>
+<td class="data row0 col3" id="T_bddb0_row0_col3">carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_abaf9_level0_row1">1</th>
-<td class="data row1 col0" id="T_abaf9_row1_col0">1027581466</td>
-<td class="data row1 col1" id="T_abaf9_row1_col1">2</td>
-<td class="data row1 col2" id="T_abaf9_row1_col2">A, B</td>
-<td class="data row1 col3" id="T_abaf9_row1_col3">carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
+<th class="row_heading level0 row1" id="T_bddb0_level0_row1">1</th>
+<td class="data row1 col0" id="T_bddb0_row1_col0">1027581466</td>
+<td class="data row1 col1" id="T_bddb0_row1_col1">2</td>
+<td class="data row1 col2" id="T_bddb0_row1_col2">A, B</td>
+<td class="data row1 col3" id="T_bddb0_row1_col3">carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_abaf9_level0_row2">2</th>
-<td class="data row2 col0" id="T_abaf9_row2_col0">1045227572</td>
-<td class="data row2 col1" id="T_abaf9_row2_col1">2</td>
-<td class="data row2 col2" id="T_abaf9_row2_col2">A, B</td>
-<td class="data row2 col3" id="T_abaf9_row2_col3">carrosserie, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
+<th class="row_heading level0 row2" id="T_bddb0_level0_row2">2</th>
+<td class="data row2 col0" id="T_bddb0_row2_col0">1045227572</td>
+<td class="data row2 col1" id="T_bddb0_row2_col1">2</td>
+<td class="data row2 col2" id="T_bddb0_row2_col2">A, B</td>
+<td class="data row2 col3" id="T_bddb0_row2_col3">carrosserie, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_abaf9_level0_row3">3</th>
-<td class="data row3 col0" id="T_abaf9_row3_col0">1054003502</td>
-<td class="data row3 col1" id="T_abaf9_row3_col1">2</td>
-<td class="data row3 col2" id="T_abaf9_row3_col2">A</td>
-<td class="data row3 col3" id="T_abaf9_row3_col3">telclicks, carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, model, price</td>
+<th class="row_heading level0 row3" id="T_bddb0_level0_row3">3</th>
+<td class="data row3 col0" id="T_bddb0_row3_col0">1054003502</td>
+<td class="data row3 col1" id="T_bddb0_row3_col1">2</td>
+<td class="data row3 col2" id="T_bddb0_row3_col2">A</td>
+<td class="data row3 col3" id="T_bddb0_row3_col3">telclicks, carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, model, price</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_abaf9_level0_row4">4</th>
-<td class="data row4 col0" id="T_abaf9_row4_col0">1072325510</td>
-<td class="data row4 col1" id="T_abaf9_row4_col1">2</td>
-<td class="data row4 col2" id="T_abaf9_row4_col2">A, B</td>
-<td class="data row4 col3" id="T_abaf9_row4_col3">carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
+<th class="row_heading level0 row4" id="T_bddb0_level0_row4">4</th>
+<td class="data row4 col0" id="T_bddb0_row4_col0">1072325510</td>
+<td class="data row4 col1" id="T_bddb0_row4_col1">2</td>
+<td class="data row4 col2" id="T_bddb0_row4_col2">A, B</td>
+<td class="data row4 col3" id="T_bddb0_row4_col3">carrosserie, photo_cnt, aantaldeuren, bouwjaar, emissie, energielabel, brand, vermogen, webclicks, model, price, group</td>
 </tr>
 </tbody>
 </table>
@@ -8757,13 +8249,29 @@ whether this initiative has improved this metric?</p>
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d91de905">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="2.4-Undocumented-Fields">2.4 Undocumented Fields<a class="anchor-link" href="#2.4-Undocumented-Fields">¶</a></h3><ul>
+<li>The dataset contains some fields not documented in the assignment schema.</li>
+<li>Some undocumented fields are useful for balance and segment checks.</li>
+<li><code>l2</code> is excluded from these checks because its meaning is unclear.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=01116f0d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-Group-Assignment-Check">3. Group Assignment Check<a class="anchor-link" href="#3.-Group-Assignment-Check">¶</a></h2><ul>
+<h2 id="3.-Group-Assignment-and-Balance-Checks">3. Group Assignment and Balance Checks<a class="anchor-link" href="#3.-Group-Assignment-and-Balance-Checks">¶</a></h2><p>These checks show whether the A/B groups are suitable for causal interpretation before reading the result.</p>
+<h3 id="3.1-Group-Assignment-Split">3.1 Group Assignment Split<a class="anchor-link" href="#3.1-Group-Assignment-Split">¶</a></h3><ul>
 <li>Raw groups: A, B, and Unassigned.</li>
 <li>95.3% of rows are assigned to A or B; 4.7% are unassigned and excluded from A-vs-B outcome analysis.</li>
 <li>If the intended design was 50/50, the A/B split should be checked for sample-ratio mismatch before causal interpretation.</li>
@@ -8776,7 +8284,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [44]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [59]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">helpers</span><span class="o">.</span><span class="n">plot_group_sizes</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span>
@@ -8816,11 +8324,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-Balance-Check">4. Balance Check<a class="anchor-link" href="#4.-Balance-Check">¶</a></h2><ul>
-<li>B differs from A on key numeric car/ad dimensions, especially price, car age, and mileage.</li>
-<li>Numeric balance is reported with both percent differences and standardized differences.</li>
-<li>I also check top categorical dimensions, because group mix can affect lead rates even when the primary KPI difference is statistically significant.</li>
-</ul>
+<h3 id="3.2-Group-Balance">3.2 Group Balance<a class="anchor-link" href="#3.2-Group-Balance">¶</a></h3><p>A and B groups differs on key numeric car/ad dimensions, especially price, car age, and mileage.</p>
 </div>
 </div>
 </div>
@@ -8829,11 +8333,10 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [45]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [60]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">numeric_balance_summary</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)))</span>
-<span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">categorical_balance_overview</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)))</span>
 </pre></div>
 </div>
 </div>
@@ -8848,169 +8351,108 @@ whether this initiative has improved this metric?</p>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_c8ccd">
+<table id="T_01556">
 <thead>
 <tr>
 <th class="index_name level0">group</th>
-<th class="col_heading level0 col0" id="T_c8ccd_level0_col0">Dimension</th>
-<th class="col_heading level0 col1" id="T_c8ccd_level0_col1">A</th>
-<th class="col_heading level0 col2" id="T_c8ccd_level0_col2">B</th>
-<th class="col_heading level0 col3" id="T_c8ccd_level0_col3">Diff B-A</th>
-<th class="col_heading level0 col4" id="T_c8ccd_level0_col4">% Diff</th>
-<th class="col_heading level0 col5" id="T_c8ccd_level0_col5">Std Diff</th>
+<th class="col_heading level0 col0" id="T_01556_level0_col0">Dimension</th>
+<th class="col_heading level0 col1" id="T_01556_level0_col1">A</th>
+<th class="col_heading level0 col2" id="T_01556_level0_col2">B</th>
+<th class="col_heading level0 col3" id="T_01556_level0_col3">Diff B-A</th>
+<th class="col_heading level0 col4" id="T_01556_level0_col4">% Diff</th>
+<th class="col_heading level0 col5" id="T_01556_level0_col5">Std Diff</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_c8ccd_level0_row0">0</th>
-<td class="data row0 col0" id="T_c8ccd_row0_col0">Price</td>
-<td class="data row0 col1" id="T_c8ccd_row0_col1">106,457.104</td>
-<td class="data row0 col2" id="T_c8ccd_row0_col2">95,563.256</td>
-<td class="data row0 col3" id="T_c8ccd_row0_col3">-10,893.849</td>
-<td class="data row0 col4" id="T_c8ccd_row0_col4">-0.102</td>
-<td class="data row0 col5" id="T_c8ccd_row0_col5">-0.012</td>
+<th class="row_heading level0 row0" id="T_01556_level0_row0">0</th>
+<td class="data row0 col0" id="T_01556_row0_col0">Price</td>
+<td class="data row0 col1" id="T_01556_row0_col1">106,457.104</td>
+<td class="data row0 col2" id="T_01556_row0_col2">95,563.256</td>
+<td class="data row0 col3" id="T_01556_row0_col3">-10,893.849</td>
+<td class="data row0 col4" id="T_01556_row0_col4">-0.102</td>
+<td class="data row0 col5" id="T_01556_row0_col5">-0.012</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_c8ccd_level0_row1">1</th>
-<td class="data row1 col0" id="T_c8ccd_row1_col0">Mileage</td>
-<td class="data row1 col1" id="T_c8ccd_row1_col1">140,764.544</td>
-<td class="data row1 col2" id="T_c8ccd_row1_col2">149,516.859</td>
-<td class="data row1 col3" id="T_c8ccd_row1_col3">8,752.315</td>
-<td class="data row1 col4" id="T_c8ccd_row1_col4">0.062</td>
-<td class="data row1 col5" id="T_c8ccd_row1_col5">0.094</td>
+<th class="row_heading level0 row1" id="T_01556_level0_row1">1</th>
+<td class="data row1 col0" id="T_01556_row1_col0">Mileage</td>
+<td class="data row1 col1" id="T_01556_row1_col1">140,764.544</td>
+<td class="data row1 col2" id="T_01556_row1_col2">149,516.859</td>
+<td class="data row1 col3" id="T_01556_row1_col3">8,752.315</td>
+<td class="data row1 col4" id="T_01556_row1_col4">0.062</td>
+<td class="data row1 col5" id="T_01556_row1_col5">0.094</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_c8ccd_level0_row2">2</th>
-<td class="data row2 col0" id="T_c8ccd_row2_col0">Days Live</td>
-<td class="data row2 col1" id="T_c8ccd_row2_col1">27.624</td>
-<td class="data row2 col2" id="T_c8ccd_row2_col2">27.646</td>
-<td class="data row2 col3" id="T_c8ccd_row2_col3">0.022</td>
-<td class="data row2 col4" id="T_c8ccd_row2_col4">0.001</td>
-<td class="data row2 col5" id="T_c8ccd_row2_col5">0.001</td>
+<th class="row_heading level0 row2" id="T_01556_level0_row2">2</th>
+<td class="data row2 col0" id="T_01556_row2_col0">Days Live</td>
+<td class="data row2 col1" id="T_01556_row2_col1">27.624</td>
+<td class="data row2 col2" id="T_01556_row2_col2">27.646</td>
+<td class="data row2 col3" id="T_01556_row2_col3">0.022</td>
+<td class="data row2 col4" id="T_01556_row2_col4">0.001</td>
+<td class="data row2 col5" id="T_01556_row2_col5">0.001</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_c8ccd_level0_row3">3</th>
-<td class="data row3 col0" id="T_c8ccd_row3_col0">Photos</td>
-<td class="data row3 col1" id="T_c8ccd_row3_col1">15.742</td>
-<td class="data row3 col2" id="T_c8ccd_row3_col2">15.366</td>
-<td class="data row3 col3" id="T_c8ccd_row3_col3">-0.376</td>
-<td class="data row3 col4" id="T_c8ccd_row3_col4">-0.024</td>
-<td class="data row3 col5" id="T_c8ccd_row3_col5">-0.058</td>
+<th class="row_heading level0 row3" id="T_01556_level0_row3">3</th>
+<td class="data row3 col0" id="T_01556_row3_col0">Photos</td>
+<td class="data row3 col1" id="T_01556_row3_col1">15.742</td>
+<td class="data row3 col2" id="T_01556_row3_col2">15.366</td>
+<td class="data row3 col3" id="T_01556_row3_col3">-0.376</td>
+<td class="data row3 col4" id="T_01556_row3_col4">-0.024</td>
+<td class="data row3 col5" id="T_01556_row3_col5">-0.058</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_c8ccd_level0_row4">4</th>
-<td class="data row4 col0" id="T_c8ccd_row4_col0">Build Year</td>
-<td class="data row4 col1" id="T_c8ccd_row4_col1">2007.560</td>
-<td class="data row4 col2" id="T_c8ccd_row4_col2">2006.721</td>
-<td class="data row4 col3" id="T_c8ccd_row4_col3">-0.839</td>
-<td class="data row4 col4" id="T_c8ccd_row4_col4">-0.000</td>
-<td class="data row4 col5" id="T_c8ccd_row4_col5">-0.155</td>
+<th class="row_heading level0 row4" id="T_01556_level0_row4">4</th>
+<td class="data row4 col0" id="T_01556_row4_col0">Build Year</td>
+<td class="data row4 col1" id="T_01556_row4_col1">2007.560</td>
+<td class="data row4 col2" id="T_01556_row4_col2">2006.721</td>
+<td class="data row4 col3" id="T_01556_row4_col3">-0.839</td>
+<td class="data row4 col4" id="T_01556_row4_col4">-0.000</td>
+<td class="data row4 col5" id="T_01556_row4_col5">-0.155</td>
 </tr>
 <tr>
-<th class="row_heading level0 row5" id="T_c8ccd_level0_row5">5</th>
-<td class="data row5 col0" id="T_c8ccd_row5_col0">Doors</td>
-<td class="data row5 col1" id="T_c8ccd_row5_col1">4.270</td>
-<td class="data row5 col2" id="T_c8ccd_row5_col2">4.220</td>
-<td class="data row5 col3" id="T_c8ccd_row5_col3">-0.049</td>
-<td class="data row5 col4" id="T_c8ccd_row5_col4">-0.012</td>
-<td class="data row5 col5" id="T_c8ccd_row5_col5">-0.050</td>
+<th class="row_heading level0 row5" id="T_01556_level0_row5">5</th>
+<td class="data row5 col0" id="T_01556_row5_col0">Doors</td>
+<td class="data row5 col1" id="T_01556_row5_col1">4.270</td>
+<td class="data row5 col2" id="T_01556_row5_col2">4.220</td>
+<td class="data row5 col3" id="T_01556_row5_col3">-0.049</td>
+<td class="data row5 col4" id="T_01556_row5_col4">-0.012</td>
+<td class="data row5 col5" id="T_01556_row5_col5">-0.050</td>
 </tr>
 <tr>
-<th class="row_heading level0 row6" id="T_c8ccd_level0_row6">6</th>
-<td class="data row6 col0" id="T_c8ccd_row6_col0">Seats</td>
-<td class="data row6 col1" id="T_c8ccd_row6_col1">4.735</td>
-<td class="data row6 col2" id="T_c8ccd_row6_col2">4.747</td>
-<td class="data row6 col3" id="T_c8ccd_row6_col3">0.012</td>
-<td class="data row6 col4" id="T_c8ccd_row6_col4">0.002</td>
-<td class="data row6 col5" id="T_c8ccd_row6_col5">0.013</td>
+<th class="row_heading level0 row6" id="T_01556_level0_row6">6</th>
+<td class="data row6 col0" id="T_01556_row6_col0">Seats</td>
+<td class="data row6 col1" id="T_01556_row6_col1">4.735</td>
+<td class="data row6 col2" id="T_01556_row6_col2">4.747</td>
+<td class="data row6 col3" id="T_01556_row6_col3">0.012</td>
+<td class="data row6 col4" id="T_01556_row6_col4">0.002</td>
+<td class="data row6 col5" id="T_01556_row6_col5">0.013</td>
 </tr>
 <tr>
-<th class="row_heading level0 row7" id="T_c8ccd_level0_row7">7</th>
-<td class="data row7 col0" id="T_c8ccd_row7_col0">Emissions</td>
-<td class="data row7 col1" id="T_c8ccd_row7_col1">129.123</td>
-<td class="data row7 col2" id="T_c8ccd_row7_col2">129.950</td>
-<td class="data row7 col3" id="T_c8ccd_row7_col3">0.827</td>
-<td class="data row7 col4" id="T_c8ccd_row7_col4">0.006</td>
-<td class="data row7 col5" id="T_c8ccd_row7_col5">0.012</td>
+<th class="row_heading level0 row7" id="T_01556_level0_row7">7</th>
+<td class="data row7 col0" id="T_01556_row7_col0">Emissions</td>
+<td class="data row7 col1" id="T_01556_row7_col1">129.123</td>
+<td class="data row7 col2" id="T_01556_row7_col2">129.950</td>
+<td class="data row7 col3" id="T_01556_row7_col3">0.827</td>
+<td class="data row7 col4" id="T_01556_row7_col4">0.006</td>
+<td class="data row7 col5" id="T_01556_row7_col5">0.012</td>
 </tr>
 <tr>
-<th class="row_heading level0 row8" id="T_c8ccd_level0_row8">8</th>
-<td class="data row8 col0" id="T_c8ccd_row8_col0">Power</td>
-<td class="data row8 col1" id="T_c8ccd_row8_col1">85.787</td>
-<td class="data row8 col2" id="T_c8ccd_row8_col2">85.420</td>
-<td class="data row8 col3" id="T_c8ccd_row8_col3">-0.367</td>
-<td class="data row8 col4" id="T_c8ccd_row8_col4">-0.004</td>
-<td class="data row8 col5" id="T_c8ccd_row8_col5">-0.009</td>
+<th class="row_heading level0 row8" id="T_01556_level0_row8">8</th>
+<td class="data row8 col0" id="T_01556_row8_col0">Power</td>
+<td class="data row8 col1" id="T_01556_row8_col1">85.787</td>
+<td class="data row8 col2" id="T_01556_row8_col2">85.420</td>
+<td class="data row8 col3" id="T_01556_row8_col3">-0.367</td>
+<td class="data row8 col4" id="T_01556_row8_col4">-0.004</td>
+<td class="data row8 col5" id="T_01556_row8_col5">-0.009</td>
 </tr>
 <tr>
-<th class="row_heading level0 row9" id="T_c8ccd_level0_row9">9</th>
-<td class="data row9 col0" id="T_c8ccd_row9_col0">Car Age</td>
-<td class="data row9 col1" id="T_c8ccd_row9_col1">8.440</td>
-<td class="data row9 col2" id="T_c8ccd_row9_col2">9.279</td>
-<td class="data row9 col3" id="T_c8ccd_row9_col3">0.839</td>
-<td class="data row9 col4" id="T_c8ccd_row9_col4">0.099</td>
-<td class="data row9 col5" id="T_c8ccd_row9_col5">0.155</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-</style>
-<table id="T_ff2ca">
-<thead>
-<tr>
-<th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_ff2ca_level0_col0">Dimension</th>
-<th class="col_heading level0 col1" id="T_ff2ca_level0_col1">Largest Category Gap</th>
-<th class="col_heading level0 col2" id="T_ff2ca_level0_col2">Share A</th>
-<th class="col_heading level0 col3" id="T_ff2ca_level0_col3">Share B</th>
-<th class="col_heading level0 col4" id="T_ff2ca_level0_col4">Share Diff</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<th class="row_heading level0 row0" id="T_ff2ca_level0_row0">0</th>
-<td class="data row0 col0" id="T_ff2ca_row0_col0">Brand</td>
-<td class="data row0 col1" id="T_ff2ca_row0_col1">FORD</td>
-<td class="data row0 col2" id="T_ff2ca_row0_col2">0.074</td>
-<td class="data row0 col3" id="T_ff2ca_row0_col3">0.071</td>
-<td class="data row0 col4" id="T_ff2ca_row0_col4">-0.003</td>
-</tr>
-<tr>
-<th class="row_heading level0 row1" id="T_ff2ca_level0_row1">1</th>
-<td class="data row1 col0" id="T_ff2ca_row1_col0">Model</td>
-<td class="data row1 col1" id="T_ff2ca_row1_col1">Corsa</td>
-<td class="data row1 col2" id="T_ff2ca_row1_col2">0.016</td>
-<td class="data row1 col3" id="T_ff2ca_row1_col3">0.017</td>
-<td class="data row1 col4" id="T_ff2ca_row1_col4">0.001</td>
-</tr>
-<tr>
-<th class="row_heading level0 row2" id="T_ff2ca_level0_row2">2</th>
-<td class="data row2 col0" id="T_ff2ca_row2_col0">Color</td>
-<td class="data row2 col1" id="T_ff2ca_row2_col1">Wit</td>
-<td class="data row2 col2" id="T_ff2ca_row2_col2">0.110</td>
-<td class="data row2 col3" id="T_ff2ca_row2_col3">0.100</td>
-<td class="data row2 col4" id="T_ff2ca_row2_col4">-0.010</td>
-</tr>
-<tr>
-<th class="row_heading level0 row3" id="T_ff2ca_level0_row3">3</th>
-<td class="data row3 col0" id="T_ff2ca_row3_col0">Body Type</td>
-<td class="data row3 col1" id="T_ff2ca_row3_col1">Terreinwagen</td>
-<td class="data row3 col2" id="T_ff2ca_row3_col2">0.058</td>
-<td class="data row3 col3" id="T_ff2ca_row3_col3">0.053</td>
-<td class="data row3 col4" id="T_ff2ca_row3_col4">-0.005</td>
-</tr>
-<tr>
-<th class="row_heading level0 row4" id="T_ff2ca_level0_row4">4</th>
-<td class="data row4 col0" id="T_ff2ca_row4_col0">Energy Label</td>
-<td class="data row4 col1" id="T_ff2ca_row4_col1">Missing</td>
-<td class="data row4 col2" id="T_ff2ca_row4_col2">0.257</td>
-<td class="data row4 col3" id="T_ff2ca_row4_col3">0.285</td>
-<td class="data row4 col4" id="T_ff2ca_row4_col4">0.028</td>
+<th class="row_heading level0 row9" id="T_01556_level0_row9">9</th>
+<td class="data row9 col0" id="T_01556_row9_col0">Car Age</td>
+<td class="data row9 col1" id="T_01556_row9_col1">8.440</td>
+<td class="data row9 col2" id="T_01556_row9_col2">9.279</td>
+<td class="data row9 col3" id="T_01556_row9_col3">0.839</td>
+<td class="data row9 col4" id="T_01556_row9_col4">0.099</td>
+<td class="data row9 col5" id="T_01556_row9_col5">0.155</td>
 </tr>
 </tbody>
 </table>
@@ -9023,7 +8465,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [46]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [61]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">helpers</span><span class="o">.</span><span class="n">plot_numeric_balance</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)</span>
@@ -9052,7 +8494,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.-Primary-Result-and-Recommendation">5. Primary Result and Recommendation<a class="anchor-link" href="#5.-Primary-Result-and-Recommendation">¶</a></h2><ul>
+<h2 id="4.-Primary-Results">4. Primary Results<a class="anchor-link" href="#4.-Primary-Results">¶</a></h2><h3 id="4.1-Result-Summary">4.1 Result Summary<a class="anchor-link" href="#4.1-Result-Summary">¶</a></h3><ul>
 <li>Assuming B is the group that received the feature, B has a 74.8% lead rate vs 72.8% for A.</li>
 <li>Difference: +2.0 percentage points; statistically significant (p &lt; 0.001).</li>
 <li>B also has more total leads per ad.</li>
@@ -9067,7 +8509,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [47]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [62]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">outcomes</span> <span class="o">=</span> <span class="n">helpers</span><span class="o">.</span><span class="n">lead_outcome_summary</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)</span>
@@ -9098,7 +8540,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="Statistical-Inference">Statistical Inference<a class="anchor-link" href="#Statistical-Inference">¶</a></h3>
+<h3 id="4.2-Statistical-Inference">4.2 Statistical Inference<a class="anchor-link" href="#4.2-Statistical-Inference">¶</a></h3>
 </div>
 </div>
 </div>
@@ -9113,7 +8555,7 @@ whether this initiative has improved this metric?</p>
 <li>The chart shows the primary KPI directly.</li>
 <li>The table below focuses on lift, confidence interval, and statistical inference.</li>
 <li>I use a <strong>two-sided</strong> two-proportion z-test. Even though the feature is expected to help, a product change could theoretically also hurt leads, so I test for a difference in either direction.</li>
-<li>Given the assignment and balance concerns above, I interpret statistical significance as evidence that the raw A/B gap is unlikely to be sampling noise, not as causal proof by itself.</li>
+<li>Given the group assignment and balance concerns above, I interpret statistical significance as evidence that the raw A/B gap is unlikely to be sampling noise, not as causal proof by itself.</li>
 <li>Absolute lift: B minus A, in percentage points.</li>
 <li>Relative lift: absolute lift divided by A lead rate.</li>
 </ul>
@@ -9125,7 +8567,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [48]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [63]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">lift_summary_table</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">hide</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s2">"index"</span><span class="p">))</span>
@@ -9143,33 +8585,33 @@ whether this initiative has improved this metric?</p>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_20ca8">
+<table id="T_ba7a7">
 <thead>
 <tr>
-<th class="col_heading level0 col0" id="T_20ca8_level0_col0">Metric</th>
-<th class="col_heading level0 col1" id="T_20ca8_level0_col1">Value</th>
+<th class="col_heading level0 col0" id="T_ba7a7_level0_col0">Metric</th>
+<th class="col_heading level0 col1" id="T_ba7a7_level0_col1">Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="data row0 col0" id="T_20ca8_row0_col0">Absolute lead-rate lift</td>
-<td class="data row0 col1" id="T_20ca8_row0_col1">2.0 pp</td>
+<td class="data row0 col0" id="T_ba7a7_row0_col0">Absolute lead-rate lift</td>
+<td class="data row0 col1" id="T_ba7a7_row0_col1">2.0 pp</td>
 </tr>
 <tr>
-<td class="data row1 col0" id="T_20ca8_row1_col0">95% CI for absolute lift</td>
-<td class="data row1 col1" id="T_20ca8_row1_col1">1.6 to 2.4 pp</td>
+<td class="data row1 col0" id="T_ba7a7_row1_col0">95% CI for absolute lift</td>
+<td class="data row1 col1" id="T_ba7a7_row1_col1">1.6 to 2.4 pp</td>
 </tr>
 <tr>
-<td class="data row2 col0" id="T_20ca8_row2_col0">Relative lift vs A</td>
-<td class="data row2 col1" id="T_20ca8_row2_col1">2.8%</td>
+<td class="data row2 col0" id="T_ba7a7_row2_col0">Relative lift vs A</td>
+<td class="data row2 col1" id="T_ba7a7_row2_col1">2.8%</td>
 </tr>
 <tr>
-<td class="data row3 col0" id="T_20ca8_row3_col0">p-value</td>
-<td class="data row3 col1" id="T_20ca8_row3_col1">&lt;0.001</td>
+<td class="data row3 col0" id="T_ba7a7_row3_col0">p-value</td>
+<td class="data row3 col1" id="T_ba7a7_row3_col1">&lt;0.001</td>
 </tr>
 <tr>
-<td class="data row4 col0" id="T_20ca8_row4_col0">Significance level</td>
-<td class="data row4 col1" id="T_20ca8_row4_col1">5%</td>
+<td class="data row4 col0" id="T_ba7a7_row4_col0">Significance level</td>
+<td class="data row4 col1" id="T_ba7a7_row4_col1">5%</td>
 </tr>
 </tbody>
 </table>
@@ -9184,7 +8626,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.-Lead-Volume-Checks">6. Lead Volume Checks<a class="anchor-link" href="#6.-Lead-Volume-Checks">¶</a></h2><ul>
+<h2 id="5.-Post-Inference-Checks">5. Post-Inference Checks<a class="anchor-link" href="#5.-Post-Inference-Checks">¶</a></h2><h3 id="5.1-Lead-Volume-Pattern">5.1 Lead Volume Pattern<a class="anchor-link" href="#5.1-Lead-Volume-Pattern">¶</a></h3><ul>
 <li>B also has higher average lead volume per ad.</li>
 <li>Channel checks show whether the lift is broad or concentrated in one lead type.</li>
 </ul>
@@ -9196,7 +8638,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [49]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [64]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">helpers</span><span class="o">.</span><span class="n">plot_average_leads_by_channel</span><span class="p">(</span><span class="n">outcomes</span><span class="p">)</span>
@@ -9239,7 +8681,7 @@ whether this initiative has improved this metric?</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="7.-Robustness-Check">7. Robustness Check<a class="anchor-link" href="#7.-Robustness-Check">¶</a></h2><p>Purpose: verify that the duplicate-ID issue found during data readiness does not drive the primary conclusion.</p>
+<h3 id="5.2-Duplicate-ID-Robustness">5.2 Duplicate-ID Robustness<a class="anchor-link" href="#5.2-Duplicate-ID-Robustness">¶</a></h3><p>Purpose: verify that the duplicate-ID issue found during data readiness does not drive the primary conclusion.</p>
 </div>
 </div>
 </div>
@@ -9248,7 +8690,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [50]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [65]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">style_table</span><span class="p">(</span><span class="n">helpers</span><span class="o">.</span><span class="n">duplicate_id_sensitivity</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)))</span>
@@ -9266,57 +8708,57 @@ whether this initiative has improved this metric?</p>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_19ea3">
+<table id="T_a1d93">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_19ea3_level0_col0">Metric</th>
-<th class="col_heading level0 col1" id="T_19ea3_level0_col1">With Dup IDs</th>
-<th class="col_heading level0 col2" id="T_19ea3_level0_col2">Excl Dup IDs</th>
+<th class="col_heading level0 col0" id="T_a1d93_level0_col0">Metric</th>
+<th class="col_heading level0 col1" id="T_a1d93_level0_col1">With Dup IDs</th>
+<th class="col_heading level0 col2" id="T_a1d93_level0_col2">Excl Dup IDs</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_19ea3_level0_row0">0</th>
-<td class="data row0 col0" id="T_19ea3_row0_col0">Rows</td>
-<td class="data row0 col1" id="T_19ea3_row0_col1">174,449</td>
-<td class="data row0 col2" id="T_19ea3_row0_col2">174,439</td>
+<th class="row_heading level0 row0" id="T_a1d93_level0_row0">0</th>
+<td class="data row0 col0" id="T_a1d93_row0_col0">Rows</td>
+<td class="data row0 col1" id="T_a1d93_row0_col1">174,449</td>
+<td class="data row0 col2" id="T_a1d93_row0_col2">174,439</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_19ea3_level0_row1">1</th>
-<td class="data row1 col0" id="T_19ea3_row1_col0">Rows Dropped</td>
-<td class="data row1 col1" id="T_19ea3_row1_col1">0</td>
-<td class="data row1 col2" id="T_19ea3_row1_col2">10</td>
+<th class="row_heading level0 row1" id="T_a1d93_level0_row1">1</th>
+<td class="data row1 col0" id="T_a1d93_row1_col0">Rows Dropped</td>
+<td class="data row1 col1" id="T_a1d93_row1_col1">0</td>
+<td class="data row1 col2" id="T_a1d93_row1_col2">10</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_19ea3_level0_row2">2</th>
-<td class="data row2 col0" id="T_19ea3_row2_col0">% Rows Dropped</td>
-<td class="data row2 col1" id="T_19ea3_row2_col1">0</td>
-<td class="data row2 col2" id="T_19ea3_row2_col2">0.000</td>
+<th class="row_heading level0 row2" id="T_a1d93_level0_row2">2</th>
+<td class="data row2 col0" id="T_a1d93_row2_col0">% Rows Dropped</td>
+<td class="data row2 col1" id="T_a1d93_row2_col1">0</td>
+<td class="data row2 col2" id="T_a1d93_row2_col2">0.000</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_19ea3_level0_row3">3</th>
-<td class="data row3 col0" id="T_19ea3_row3_col0">A Lead Rate</td>
-<td class="data row3 col1" id="T_19ea3_row3_col1">0.728</td>
-<td class="data row3 col2" id="T_19ea3_row3_col2">0.728</td>
+<th class="row_heading level0 row3" id="T_a1d93_level0_row3">3</th>
+<td class="data row3 col0" id="T_a1d93_row3_col0">A Lead Rate</td>
+<td class="data row3 col1" id="T_a1d93_row3_col1">0.728</td>
+<td class="data row3 col2" id="T_a1d93_row3_col2">0.728</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_19ea3_level0_row4">4</th>
-<td class="data row4 col0" id="T_19ea3_row4_col0">B Lead Rate</td>
-<td class="data row4 col1" id="T_19ea3_row4_col1">0.748</td>
-<td class="data row4 col2" id="T_19ea3_row4_col2">0.748</td>
+<th class="row_heading level0 row4" id="T_a1d93_level0_row4">4</th>
+<td class="data row4 col0" id="T_a1d93_row4_col0">B Lead Rate</td>
+<td class="data row4 col1" id="T_a1d93_row4_col1">0.748</td>
+<td class="data row4 col2" id="T_a1d93_row4_col2">0.748</td>
 </tr>
 <tr>
-<th class="row_heading level0 row5" id="T_19ea3_level0_row5">5</th>
-<td class="data row5 col0" id="T_19ea3_row5_col0">Abs Lead-Rate Lift</td>
-<td class="data row5 col1" id="T_19ea3_row5_col1">0.020</td>
-<td class="data row5 col2" id="T_19ea3_row5_col2">0.020</td>
+<th class="row_heading level0 row5" id="T_a1d93_level0_row5">5</th>
+<td class="data row5 col0" id="T_a1d93_row5_col0">Abs Lead-Rate Lift</td>
+<td class="data row5 col1" id="T_a1d93_row5_col1">0.020</td>
+<td class="data row5 col2" id="T_a1d93_row5_col2">0.020</td>
 </tr>
 <tr>
-<th class="row_heading level0 row6" id="T_19ea3_level0_row6">6</th>
-<td class="data row6 col0" id="T_19ea3_row6_col0">Relative Lift vs A</td>
-<td class="data row6 col1" id="T_19ea3_row6_col1">0.028</td>
-<td class="data row6 col2" id="T_19ea3_row6_col2">0.028</td>
+<th class="row_heading level0 row6" id="T_a1d93_level0_row6">6</th>
+<td class="data row6 col0" id="T_a1d93_row6_col0">Relative Lift vs A</td>
+<td class="data row6 col1" id="T_a1d93_row6_col1">0.028</td>
+<td class="data row6 col2" id="T_a1d93_row6_col2">0.028</td>
 </tr>
 </tbody>
 </table>
@@ -9340,7 +8782,7 @@ whether this initiative has improved this metric?</p>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [51]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [66]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">helpers</span><span class="o">.</span><span class="n">plot_duplicate_id_sensitivity</span><span class="p">(</span><span class="n">ab_data</span><span class="p">)</span>

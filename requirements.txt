@@ -1,4 +1,4 @@
-pandas
-pandasql
+ipython
 matplotlib
 numpy
+pandas
