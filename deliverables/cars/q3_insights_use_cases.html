@@ -7821,6 +7821,14 @@ a.anchor-link {
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">MODULE_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"modules"</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">MODULE_DIR</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+    <span class="n">MODULE_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"assignments/cars/modules"</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+<span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">MODULE_DIR</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">MODULE_DIR</span><span class="p">))</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">display</span>
 
@@ -7831,7 +7839,7 @@ a.anchor-link {
 
 <span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">"display.float_format"</span><span class="p">,</span> <span class="s2">"</span><span class="si">{:,.3f}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">)</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">"display.max_columns"</span><span class="p">,</span> <span class="mi">80</span><span class="p">)</span>
-<span class="n">helpers</span><span class="o">.</span><span class="n">apply_plot_style</span><span class="p">()</span>
+<span class="n">helpers</span><span class="o">.</span><span class="n">set_plot_style</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -7905,49 +7913,49 @@ a.anchor-link {
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_06c63">
+<table id="T_7b200">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_06c63_level0_col0">Lead Type</th>
-<th class="col_heading level0 col1" id="T_06c63_level0_col1">Rows With Event</th>
-<th class="col_heading level0 col2" id="T_06c63_level0_col2">Ads With Event Share</th>
-<th class="col_heading level0 col3" id="T_06c63_level0_col3">Avg Events/Ad</th>
-<th class="col_heading level0 col4" id="T_06c63_level0_col4">Lead Event Share</th>
+<th class="col_heading level0 col0" id="T_7b200_level0_col0">Lead Type</th>
+<th class="col_heading level0 col1" id="T_7b200_level0_col1">Rows With Event</th>
+<th class="col_heading level0 col2" id="T_7b200_level0_col2">Ads With Event Share</th>
+<th class="col_heading level0 col3" id="T_7b200_level0_col3">Avg Events/Ad</th>
+<th class="col_heading level0 col4" id="T_7b200_level0_col4">Lead Event Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_06c63_level0_row0">3</th>
-<td class="data row0 col0" id="T_06c63_row0_col0">Web Clicks</td>
-<td class="data row0 col1" id="T_06c63_row0_col1">97,931</td>
-<td class="data row0 col2" id="T_06c63_row0_col2">0.535</td>
-<td class="data row0 col3" id="T_06c63_row0_col3">2.739</td>
-<td class="data row0 col4" id="T_06c63_row0_col4">0.514</td>
+<th class="row_heading level0 row0" id="T_7b200_level0_row0">3</th>
+<td class="data row0 col0" id="T_7b200_row0_col0">Web Clicks</td>
+<td class="data row0 col1" id="T_7b200_row0_col1">97,931</td>
+<td class="data row0 col2" id="T_7b200_row0_col2">0.535</td>
+<td class="data row0 col3" id="T_7b200_row0_col3">2.739</td>
+<td class="data row0 col4" id="T_7b200_row0_col4">0.514</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_06c63_level0_row1">2</th>
-<td class="data row1 col0" id="T_06c63_row1_col0">Questions</td>
-<td class="data row1 col1" id="T_06c63_row1_col1">60,485</td>
-<td class="data row1 col2" id="T_06c63_row1_col2">0.330</td>
-<td class="data row1 col3" id="T_06c63_row1_col3">0.991</td>
-<td class="data row1 col4" id="T_06c63_row1_col4">0.186</td>
+<th class="row_heading level0 row1" id="T_7b200_level0_row1">2</th>
+<td class="data row1 col0" id="T_7b200_row1_col0">Questions</td>
+<td class="data row1 col1" id="T_7b200_row1_col1">60,485</td>
+<td class="data row1 col2" id="T_7b200_row1_col2">0.330</td>
+<td class="data row1 col3" id="T_7b200_row1_col3">0.991</td>
+<td class="data row1 col4" id="T_7b200_row1_col4">0.186</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_06c63_level0_row2">0</th>
-<td class="data row2 col0" id="T_06c63_row2_col0">Tel Clicks</td>
-<td class="data row2 col1" id="T_06c63_row2_col1">57,429</td>
-<td class="data row2 col2" id="T_06c63_row2_col2">0.314</td>
-<td class="data row2 col3" id="T_06c63_row2_col3">0.917</td>
-<td class="data row2 col4" id="T_06c63_row2_col4">0.172</td>
+<th class="row_heading level0 row2" id="T_7b200_level0_row2">0</th>
+<td class="data row2 col0" id="T_7b200_row2_col0">Tel Clicks</td>
+<td class="data row2 col1" id="T_7b200_row2_col1">57,429</td>
+<td class="data row2 col2" id="T_7b200_row2_col2">0.314</td>
+<td class="data row2 col3" id="T_7b200_row2_col3">0.917</td>
+<td class="data row2 col4" id="T_7b200_row2_col4">0.172</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_06c63_level0_row3">1</th>
-<td class="data row3 col0" id="T_06c63_row3_col0">Bids</td>
-<td class="data row3 col1" id="T_06c63_row3_col1">30,908</td>
-<td class="data row3 col2" id="T_06c63_row3_col2">0.169</td>
-<td class="data row3 col3" id="T_06c63_row3_col3">0.678</td>
-<td class="data row3 col4" id="T_06c63_row3_col4">0.127</td>
+<th class="row_heading level0 row3" id="T_7b200_level0_row3">1</th>
+<td class="data row3 col0" id="T_7b200_row3_col0">Bids</td>
+<td class="data row3 col1" id="T_7b200_row3_col1">30,908</td>
+<td class="data row3 col2" id="T_7b200_row3_col2">0.169</td>
+<td class="data row3 col3" id="T_7b200_row3_col3">0.678</td>
+<td class="data row3 col4" id="T_7b200_row3_col4">0.127</td>
 </tr>
 </tbody>
 </table>
@@ -8001,39 +8009,39 @@ a.anchor-link {
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_3dba1">
+<table id="T_7f424">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_3dba1_level0_col0">Metric</th>
-<th class="col_heading level0 col1" id="T_3dba1_level0_col1">Value</th>
+<th class="col_heading level0 col0" id="T_7f424_level0_col0">Metric</th>
+<th class="col_heading level0 col1" id="T_7f424_level0_col1">Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_3dba1_level0_row0">0</th>
-<td class="data row0 col0" id="T_3dba1_row0_col0">Ads With At Least One Lead</td>
-<td class="data row0 col1" id="T_3dba1_row0_col1">0.738</td>
+<th class="row_heading level0 row0" id="T_7f424_level0_row0">0</th>
+<td class="data row0 col0" id="T_7f424_row0_col0">Ads With At Least One Lead</td>
+<td class="data row0 col1" id="T_7f424_row0_col1">0.738</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_3dba1_level0_row1">1</th>
-<td class="data row1 col0" id="T_3dba1_row1_col0">Median Total Leads</td>
-<td class="data row1 col1" id="T_3dba1_row1_col1">2</td>
+<th class="row_heading level0 row1" id="T_7f424_level0_row1">1</th>
+<td class="data row1 col0" id="T_7f424_row1_col0">Median Total Leads</td>
+<td class="data row1 col1" id="T_7f424_row1_col1">2</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_3dba1_level0_row2">2</th>
-<td class="data row2 col0" id="T_3dba1_row2_col0">P90 Total Leads</td>
-<td class="data row2 col1" id="T_3dba1_row2_col1">14</td>
+<th class="row_heading level0 row2" id="T_7f424_level0_row2">2</th>
+<td class="data row2 col0" id="T_7f424_row2_col0">P90 Total Leads</td>
+<td class="data row2 col1" id="T_7f424_row2_col1">14</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_3dba1_level0_row3">3</th>
-<td class="data row3 col0" id="T_3dba1_row3_col0">P99 Total Leads</td>
-<td class="data row3 col1" id="T_3dba1_row3_col1">40</td>
+<th class="row_heading level0 row3" id="T_7f424_level0_row3">3</th>
+<td class="data row3 col0" id="T_7f424_row3_col0">P99 Total Leads</td>
+<td class="data row3 col1" id="T_7f424_row3_col1">40</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_3dba1_level0_row4">4</th>
-<td class="data row4 col0" id="T_3dba1_row4_col0">Lead Events From Top-Decile Ads</td>
-<td class="data row4 col1" id="T_3dba1_row4_col1">0.487</td>
+<th class="row_heading level0 row4" id="T_7f424_level0_row4">4</th>
+<td class="data row4 col0" id="T_7f424_row4_col0">Lead Events From Top-Decile Ads</td>
+<td class="data row4 col1" id="T_7f424_row4_col1">0.487</td>
 </tr>
 </tbody>
 </table>
@@ -8115,84 +8123,84 @@ a.anchor-link {
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
-#T_4c24e_row0_col2, #T_4c24e_row0_col3 {
+#T_d4712_row0_col2, #T_d4712_row0_col3 {
   background-color: #2f8f6b;
   color: #f1f1f1;
 }
-#T_4c24e_row1_col2 {
+#T_d4712_row1_col2 {
   background-color: #63aa92;
   color: #f1f1f1;
 }
-#T_4c24e_row1_col3 {
+#T_d4712_row1_col3 {
   background-color: #88bdae;
   color: #000000;
 }
-#T_4c24e_row2_col2 {
+#T_d4712_row2_col2 {
   background-color: #b7d5d1;
   color: #000000;
 }
-#T_4c24e_row2_col3 {
+#T_d4712_row2_col3 {
   background-color: #d0e3e4;
   color: #000000;
 }
-#T_4c24e_row3_col2, #T_4c24e_row3_col3 {
+#T_d4712_row3_col2, #T_d4712_row3_col3 {
   background-color: #eaf0f7;
   color: #000000;
 }
 </style>
-<table id="T_4c24e">
+<table id="T_d4712">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_4c24e_level0_col0">Price Band</th>
-<th class="col_heading level0 col1" id="T_4c24e_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_4c24e_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_4c24e_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_4c24e_level0_col4">Median Car Age</th>
-<th class="col_heading level0 col5" id="T_4c24e_level0_col5">Median Mileage</th>
-<th class="col_heading level0 col6" id="T_4c24e_level0_col6">Ad Share</th>
+<th class="col_heading level0 col0" id="T_d4712_level0_col0">Price Band</th>
+<th class="col_heading level0 col1" id="T_d4712_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_d4712_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_d4712_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_d4712_level0_col4">Median Car Age</th>
+<th class="col_heading level0 col5" id="T_d4712_level0_col5">Median Mileage</th>
+<th class="col_heading level0 col6" id="T_d4712_level0_col6">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_4c24e_level0_row0">0</th>
-<td class="data row0 col0" id="T_4c24e_row0_col0">0-25k</td>
-<td class="data row0 col1" id="T_4c24e_row0_col1">52,340</td>
-<td class="data row0 col2" id="T_4c24e_row0_col2">88.5%</td>
-<td class="data row0 col3" id="T_4c24e_row0_col3">8.689</td>
-<td class="data row0 col4" id="T_4c24e_row0_col4">15</td>
-<td class="data row0 col5" id="T_4c24e_row0_col5">197,588</td>
-<td class="data row0 col6" id="T_4c24e_row0_col6">28.6%</td>
+<th class="row_heading level0 row0" id="T_d4712_level0_row0">0</th>
+<td class="data row0 col0" id="T_d4712_row0_col0">0-25k</td>
+<td class="data row0 col1" id="T_d4712_row0_col1">52,340</td>
+<td class="data row0 col2" id="T_d4712_row0_col2">88.5%</td>
+<td class="data row0 col3" id="T_d4712_row0_col3">8.689</td>
+<td class="data row0 col4" id="T_d4712_row0_col4">15</td>
+<td class="data row0 col5" id="T_d4712_row0_col5">197,588</td>
+<td class="data row0 col6" id="T_d4712_row0_col6">28.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_4c24e_level0_row1">1</th>
-<td class="data row1 col0" id="T_4c24e_row1_col0">25k-60k</td>
-<td class="data row1 col1" id="T_4c24e_row1_col1">42,250</td>
-<td class="data row1 col2" id="T_4c24e_row1_col2">79.9%</td>
-<td class="data row1 col3" id="T_4c24e_row1_col3">5.815</td>
-<td class="data row1 col4" id="T_4c24e_row1_col4">10</td>
-<td class="data row1 col5" id="T_4c24e_row1_col5">162,664</td>
-<td class="data row1 col6" id="T_4c24e_row1_col6">23.1%</td>
+<th class="row_heading level0 row1" id="T_d4712_level0_row1">1</th>
+<td class="data row1 col0" id="T_d4712_row1_col0">25k-60k</td>
+<td class="data row1 col1" id="T_d4712_row1_col1">42,250</td>
+<td class="data row1 col2" id="T_d4712_row1_col2">79.9%</td>
+<td class="data row1 col3" id="T_d4712_row1_col3">5.815</td>
+<td class="data row1 col4" id="T_d4712_row1_col4">10</td>
+<td class="data row1 col5" id="T_d4712_row1_col5">162,664</td>
+<td class="data row1 col6" id="T_d4712_row1_col6">23.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_4c24e_level0_row2">2</th>
-<td class="data row2 col0" id="T_4c24e_row2_col0">60k-120k</td>
-<td class="data row2 col1" id="T_4c24e_row2_col1">43,290</td>
-<td class="data row2 col2" id="T_4c24e_row2_col2">66.4%</td>
-<td class="data row2 col3" id="T_4c24e_row2_col3">3.524</td>
-<td class="data row2 col4" id="T_4c24e_row2_col4">6</td>
-<td class="data row2 col5" id="T_4c24e_row2_col5">113,698</td>
-<td class="data row2 col6" id="T_4c24e_row2_col6">23.6%</td>
+<th class="row_heading level0 row2" id="T_d4712_level0_row2">2</th>
+<td class="data row2 col0" id="T_d4712_row2_col0">60k-120k</td>
+<td class="data row2 col1" id="T_d4712_row2_col1">43,290</td>
+<td class="data row2 col2" id="T_d4712_row2_col2">66.4%</td>
+<td class="data row2 col3" id="T_d4712_row2_col3">3.524</td>
+<td class="data row2 col4" id="T_d4712_row2_col4">6</td>
+<td class="data row2 col5" id="T_d4712_row2_col5">113,698</td>
+<td class="data row2 col6" id="T_d4712_row2_col6">23.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_4c24e_level0_row3">3</th>
-<td class="data row3 col0" id="T_4c24e_row3_col0">120k+</td>
-<td class="data row3 col1" id="T_4c24e_row3_col1">45,175</td>
-<td class="data row3 col2" id="T_4c24e_row3_col2">58.0%</td>
-<td class="data row3 col3" id="T_4c24e_row3_col3">2.694</td>
-<td class="data row3 col4" id="T_4c24e_row3_col4">3</td>
-<td class="data row3 col5" id="T_4c24e_row3_col5">62,129</td>
-<td class="data row3 col6" id="T_4c24e_row3_col6">24.7%</td>
+<th class="row_heading level0 row3" id="T_d4712_level0_row3">3</th>
+<td class="data row3 col0" id="T_d4712_row3_col0">120k+</td>
+<td class="data row3 col1" id="T_d4712_row3_col1">45,175</td>
+<td class="data row3 col2" id="T_d4712_row3_col2">58.0%</td>
+<td class="data row3 col3" id="T_d4712_row3_col3">2.694</td>
+<td class="data row3 col4" id="T_d4712_row3_col4">3</td>
+<td class="data row3 col5" id="T_d4712_row3_col5">62,129</td>
+<td class="data row3 col6" id="T_d4712_row3_col6">24.7%</td>
 </tr>
 </tbody>
 </table>
@@ -8202,84 +8210,84 @@ a.anchor-link {
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
-#T_b6a5a_row0_col2, #T_b6a5a_row0_col3 {
+#T_a720c_row0_col2, #T_a720c_row0_col3 {
   background-color: #2f8f6b;
   color: #f1f1f1;
 }
-#T_b6a5a_row1_col2 {
+#T_a720c_row1_col2 {
   background-color: #429979;
   color: #f1f1f1;
 }
-#T_b6a5a_row1_col3 {
+#T_a720c_row1_col3 {
   background-color: #469b7d;
   color: #f1f1f1;
 }
-#T_b6a5a_row2_col2 {
+#T_a720c_row2_col2 {
   background-color: #6daf9a;
   color: #f1f1f1;
 }
-#T_b6a5a_row2_col3 {
+#T_a720c_row2_col3 {
   background-color: #82baa9;
   color: #000000;
 }
-#T_b6a5a_row3_col2, #T_b6a5a_row3_col3 {
+#T_a720c_row3_col2, #T_a720c_row3_col3 {
   background-color: #eaf0f7;
   color: #000000;
 }
 </style>
-<table id="T_b6a5a">
+<table id="T_a720c">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_b6a5a_level0_col0">Mileage Band</th>
-<th class="col_heading level0 col1" id="T_b6a5a_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_b6a5a_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_b6a5a_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_b6a5a_level0_col4">Median Price</th>
-<th class="col_heading level0 col5" id="T_b6a5a_level0_col5">Median Car Age</th>
-<th class="col_heading level0 col6" id="T_b6a5a_level0_col6">Ad Share</th>
+<th class="col_heading level0 col0" id="T_a720c_level0_col0">Mileage Band</th>
+<th class="col_heading level0 col1" id="T_a720c_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_a720c_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_a720c_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_a720c_level0_col4">Median Price</th>
+<th class="col_heading level0 col5" id="T_a720c_level0_col5">Median Car Age</th>
+<th class="col_heading level0 col6" id="T_a720c_level0_col6">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_b6a5a_level0_row0">3</th>
-<td class="data row0 col0" id="T_b6a5a_row0_col0">200k+</td>
-<td class="data row0 col1" id="T_b6a5a_row0_col1">45,272</td>
-<td class="data row0 col2" id="T_b6a5a_row0_col2">86.0%</td>
-<td class="data row0 col3" id="T_b6a5a_row0_col3">7.167</td>
-<td class="data row0 col4" id="T_b6a5a_row0_col4">€22,500</td>
-<td class="data row0 col5" id="T_b6a5a_row0_col5">13</td>
-<td class="data row0 col6" id="T_b6a5a_row0_col6">24.7%</td>
+<th class="row_heading level0 row0" id="T_a720c_level0_row0">3</th>
+<td class="data row0 col0" id="T_a720c_row0_col0">200k+</td>
+<td class="data row0 col1" id="T_a720c_row0_col1">45,272</td>
+<td class="data row0 col2" id="T_a720c_row0_col2">86.0%</td>
+<td class="data row0 col3" id="T_a720c_row0_col3">7.167</td>
+<td class="data row0 col4" id="T_a720c_row0_col4">€22,500</td>
+<td class="data row0 col5" id="T_a720c_row0_col5">13</td>
+<td class="data row0 col6" id="T_a720c_row0_col6">24.7%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_b6a5a_level0_row1">2</th>
-<td class="data row1 col0" id="T_b6a5a_row1_col0">150k-200k</td>
-<td class="data row1 col1" id="T_b6a5a_row1_col1">35,863</td>
-<td class="data row1 col2" id="T_b6a5a_row1_col2">82.5%</td>
-<td class="data row1 col3" id="T_b6a5a_row1_col3">6.583</td>
-<td class="data row1 col4" id="T_b6a5a_row1_col4">€39,450</td>
-<td class="data row1 col5" id="T_b6a5a_row1_col5">11</td>
-<td class="data row1 col6" id="T_b6a5a_row1_col6">19.6%</td>
+<th class="row_heading level0 row1" id="T_a720c_level0_row1">2</th>
+<td class="data row1 col0" id="T_a720c_row1_col0">150k-200k</td>
+<td class="data row1 col1" id="T_a720c_row1_col1">35,863</td>
+<td class="data row1 col2" id="T_a720c_row1_col2">82.5%</td>
+<td class="data row1 col3" id="T_a720c_row1_col3">6.583</td>
+<td class="data row1 col4" id="T_a720c_row1_col4">€39,450</td>
+<td class="data row1 col5" id="T_a720c_row1_col5">11</td>
+<td class="data row1 col6" id="T_a720c_row1_col6">19.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_b6a5a_level0_row2">1</th>
-<td class="data row2 col0" id="T_b6a5a_row2_col0">75k-150k</td>
-<td class="data row2 col1" id="T_b6a5a_row2_col1">56,374</td>
-<td class="data row2 col2" id="T_b6a5a_row2_col2">74.8%</td>
-<td class="data row2 col3" id="T_b6a5a_row2_col3">5.117</td>
-<td class="data row2 col4" id="T_b6a5a_row2_col4">€69,500</td>
-<td class="data row2 col5" id="T_b6a5a_row2_col5">7</td>
-<td class="data row2 col6" id="T_b6a5a_row2_col6">30.8%</td>
+<th class="row_heading level0 row2" id="T_a720c_level0_row2">1</th>
+<td class="data row2 col0" id="T_a720c_row2_col0">75k-150k</td>
+<td class="data row2 col1" id="T_a720c_row2_col1">56,374</td>
+<td class="data row2 col2" id="T_a720c_row2_col2">74.8%</td>
+<td class="data row2 col3" id="T_a720c_row2_col3">5.117</td>
+<td class="data row2 col4" id="T_a720c_row2_col4">€69,500</td>
+<td class="data row2 col5" id="T_a720c_row2_col5">7</td>
+<td class="data row2 col6" id="T_a720c_row2_col6">30.8%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_b6a5a_level0_row3">0</th>
-<td class="data row3 col0" id="T_b6a5a_row3_col0">0-75k</td>
-<td class="data row3 col1" id="T_b6a5a_row3_col1">44,149</td>
-<td class="data row3 col2" id="T_b6a5a_row3_col2">52.4%</td>
-<td class="data row3 col3" id="T_b6a5a_row3_col3">2.525</td>
-<td class="data row3 col4" id="T_b6a5a_row3_col4">€139,000</td>
-<td class="data row3 col5" id="T_b6a5a_row3_col5">2</td>
-<td class="data row3 col6" id="T_b6a5a_row3_col6">24.1%</td>
+<th class="row_heading level0 row3" id="T_a720c_level0_row3">0</th>
+<td class="data row3 col0" id="T_a720c_row3_col0">0-75k</td>
+<td class="data row3 col1" id="T_a720c_row3_col1">44,149</td>
+<td class="data row3 col2" id="T_a720c_row3_col2">52.4%</td>
+<td class="data row3 col3" id="T_a720c_row3_col3">2.525</td>
+<td class="data row3 col4" id="T_a720c_row3_col4">€139,000</td>
+<td class="data row3 col5" id="T_a720c_row3_col5">2</td>
+<td class="data row3 col6" id="T_a720c_row3_col6">24.1%</td>
 </tr>
 </tbody>
 </table>
@@ -8289,84 +8297,84 @@ a.anchor-link {
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
-#T_cfc17_row0_col2, #T_cfc17_row0_col3 {
+#T_3895d_row0_col2, #T_3895d_row0_col3 {
   background-color: #2f8f6b;
   color: #f1f1f1;
 }
-#T_cfc17_row1_col2 {
+#T_3895d_row1_col2 {
   background-color: #4b9d80;
   color: #f1f1f1;
 }
-#T_cfc17_row1_col3 {
+#T_3895d_row1_col3 {
   background-color: #67ac95;
   color: #f1f1f1;
 }
-#T_cfc17_row2_col2 {
+#T_3895d_row2_col2 {
   background-color: #83baaa;
   color: #000000;
 }
-#T_cfc17_row2_col3 {
+#T_3895d_row2_col3 {
   background-color: #aacfc7;
   color: #000000;
 }
-#T_cfc17_row3_col2, #T_cfc17_row3_col3 {
+#T_3895d_row3_col2, #T_3895d_row3_col3 {
   background-color: #eaf0f7;
   color: #000000;
 }
 </style>
-<table id="T_cfc17">
+<table id="T_3895d">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_cfc17_level0_col0">Car Age Band</th>
-<th class="col_heading level0 col1" id="T_cfc17_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_cfc17_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_cfc17_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_cfc17_level0_col4">Median Price</th>
-<th class="col_heading level0 col5" id="T_cfc17_level0_col5">Median Mileage</th>
-<th class="col_heading level0 col6" id="T_cfc17_level0_col6">Ad Share</th>
+<th class="col_heading level0 col0" id="T_3895d_level0_col0">Car Age Band</th>
+<th class="col_heading level0 col1" id="T_3895d_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_3895d_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_3895d_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_3895d_level0_col4">Median Price</th>
+<th class="col_heading level0 col5" id="T_3895d_level0_col5">Median Mileage</th>
+<th class="col_heading level0 col6" id="T_3895d_level0_col6">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_cfc17_level0_row0">3</th>
-<td class="data row0 col0" id="T_cfc17_row0_col0">13+</td>
-<td class="data row0 col1" id="T_cfc17_row0_col1">50,442</td>
-<td class="data row0 col2" id="T_cfc17_row0_col2">87.7%</td>
-<td class="data row0 col3" id="T_cfc17_row0_col3">8.113</td>
-<td class="data row0 col4" id="T_cfc17_row0_col4">€14,500</td>
-<td class="data row0 col5" id="T_cfc17_row0_col5">198,456</td>
-<td class="data row0 col6" id="T_cfc17_row0_col6">27.6%</td>
+<th class="row_heading level0 row0" id="T_3895d_level0_row0">3</th>
+<td class="data row0 col0" id="T_3895d_row0_col0">13+</td>
+<td class="data row0 col1" id="T_3895d_row0_col1">50,442</td>
+<td class="data row0 col2" id="T_3895d_row0_col2">87.7%</td>
+<td class="data row0 col3" id="T_3895d_row0_col3">8.113</td>
+<td class="data row0 col4" id="T_3895d_row0_col4">€14,500</td>
+<td class="data row0 col5" id="T_3895d_row0_col5">198,456</td>
+<td class="data row0 col6" id="T_3895d_row0_col6">27.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_cfc17_level0_row1">2</th>
-<td class="data row1 col0" id="T_cfc17_row1_col0">8-12</td>
-<td class="data row1 col1" id="T_cfc17_row1_col1">52,457</td>
-<td class="data row1 col2" id="T_cfc17_row1_col2">81.5%</td>
-<td class="data row1 col3" id="T_cfc17_row1_col3">6.184</td>
-<td class="data row1 col4" id="T_cfc17_row1_col4">€44,950</td>
-<td class="data row1 col5" id="T_cfc17_row1_col5">166,580</td>
-<td class="data row1 col6" id="T_cfc17_row1_col6">28.7%</td>
+<th class="row_heading level0 row1" id="T_3895d_level0_row1">2</th>
+<td class="data row1 col0" id="T_3895d_row1_col0">8-12</td>
+<td class="data row1 col1" id="T_3895d_row1_col1">52,457</td>
+<td class="data row1 col2" id="T_3895d_row1_col2">81.5%</td>
+<td class="data row1 col3" id="T_3895d_row1_col3">6.184</td>
+<td class="data row1 col4" id="T_3895d_row1_col4">€44,950</td>
+<td class="data row1 col5" id="T_3895d_row1_col5">166,580</td>
+<td class="data row1 col6" id="T_3895d_row1_col6">28.7%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_cfc17_level0_row2">1</th>
-<td class="data row2 col0" id="T_cfc17_row2_col0">4-7</td>
-<td class="data row2 col1" id="T_cfc17_row2_col1">45,914</td>
-<td class="data row2 col2" id="T_cfc17_row2_col2">69.5%</td>
-<td class="data row2 col3" id="T_cfc17_row2_col3">3.941</td>
-<td class="data row2 col4" id="T_cfc17_row2_col4">€97,500</td>
-<td class="data row2 col5" id="T_cfc17_row2_col5">108,701</td>
-<td class="data row2 col6" id="T_cfc17_row2_col6">25.1%</td>
+<th class="row_heading level0 row2" id="T_3895d_level0_row2">1</th>
+<td class="data row2 col0" id="T_3895d_row2_col0">4-7</td>
+<td class="data row2 col1" id="T_3895d_row2_col1">45,914</td>
+<td class="data row2 col2" id="T_3895d_row2_col2">69.5%</td>
+<td class="data row2 col3" id="T_3895d_row2_col3">3.941</td>
+<td class="data row2 col4" id="T_3895d_row2_col4">€97,500</td>
+<td class="data row2 col5" id="T_3895d_row2_col5">108,701</td>
+<td class="data row2 col6" id="T_3895d_row2_col6">25.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_cfc17_level0_row3">0</th>
-<td class="data row3 col0" id="T_cfc17_row3_col0">0-3</td>
-<td class="data row3 col1" id="T_cfc17_row3_col1">34,249</td>
-<td class="data row3 col2" id="T_cfc17_row3_col2">47.0%</td>
-<td class="data row3 col3" id="T_cfc17_row3_col3">1.757</td>
-<td class="data row3 col4" id="T_cfc17_row3_col4">€169,950</td>
-<td class="data row3 col5" id="T_cfc17_row3_col5">30,212</td>
-<td class="data row3 col6" id="T_cfc17_row3_col6">18.7%</td>
+<th class="row_heading level0 row3" id="T_3895d_level0_row3">0</th>
+<td class="data row3 col0" id="T_3895d_row3_col0">0-3</td>
+<td class="data row3 col1" id="T_3895d_row3_col1">34,249</td>
+<td class="data row3 col2" id="T_3895d_row3_col2">47.0%</td>
+<td class="data row3 col3" id="T_3895d_row3_col3">1.757</td>
+<td class="data row3 col4" id="T_3895d_row3_col4">€169,950</td>
+<td class="data row3 col5" id="T_3895d_row3_col5">30,212</td>
+<td class="data row3 col6" id="T_3895d_row3_col6">18.7%</td>
 </tr>
 </tbody>
 </table>
@@ -8400,147 +8408,147 @@ a.anchor-link {
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
-#T_4f577_row0_col2, #T_4f577_row0_col3 {
+#T_f4b0b_row0_col2, #T_f4b0b_row0_col3 {
   background-color: #2f8f6b;
   color: #f1f1f1;
 }
-#T_4f577_row1_col2 {
+#T_f4b0b_row1_col2 {
   background-color: #479c7d;
   color: #f1f1f1;
 }
-#T_4f577_row1_col3 {
+#T_f4b0b_row1_col3 {
   background-color: #56a388;
   color: #f1f1f1;
 }
-#T_4f577_row2_col2 {
+#T_f4b0b_row2_col2 {
   background-color: #96c4b8;
   color: #000000;
 }
-#T_4f577_row2_col3 {
+#T_f4b0b_row2_col3 {
   background-color: #94c3b7;
   color: #000000;
 }
-#T_4f577_row3_col2 {
+#T_f4b0b_row3_col2 {
   background-color: #a1cac0;
   color: #000000;
 }
-#T_4f577_row3_col3 {
+#T_f4b0b_row3_col3 {
   background-color: #c5dddb;
   color: #000000;
 }
-#T_4f577_row4_col2 {
+#T_f4b0b_row4_col2 {
   background-color: #b4d4ce;
   color: #000000;
 }
-#T_4f577_row4_col3 {
+#T_f4b0b_row4_col3 {
   background-color: #c3dcda;
   color: #000000;
 }
-#T_4f577_row5_col2 {
+#T_f4b0b_row5_col2 {
   background-color: #c2dbd9;
   color: #000000;
 }
-#T_4f577_row5_col3 {
+#T_f4b0b_row5_col3 {
   background-color: #c6dddc;
   color: #000000;
 }
-#T_4f577_row6_col2 {
+#T_f4b0b_row6_col2 {
   background-color: #cde1e1;
   color: #000000;
 }
-#T_4f577_row6_col3 {
+#T_f4b0b_row6_col3 {
   background-color: #99c6ba;
   color: #000000;
 }
-#T_4f577_row7_col2, #T_4f577_row7_col3 {
+#T_f4b0b_row7_col2, #T_f4b0b_row7_col3 {
   background-color: #eaf0f7;
   color: #000000;
 }
 </style>
-<table id="T_4f577">
+<table id="T_f4b0b">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_4f577_level0_col0">Body Type</th>
-<th class="col_heading level0 col1" id="T_4f577_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_4f577_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_4f577_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_4f577_level0_col4">Median Price</th>
-<th class="col_heading level0 col5" id="T_4f577_level0_col5">Ad Share</th>
+<th class="col_heading level0 col0" id="T_f4b0b_level0_col0">Body Type</th>
+<th class="col_heading level0 col1" id="T_f4b0b_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_f4b0b_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_f4b0b_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_f4b0b_level0_col4">Median Price</th>
+<th class="col_heading level0 col5" id="T_f4b0b_level0_col5">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_4f577_level0_row0">1</th>
-<td class="data row0 col0" id="T_4f577_row0_col0">Coup</td>
-<td class="data row0 col1" id="T_4f577_row0_col1">2,913</td>
-<td class="data row0 col2" id="T_4f577_row0_col2">86.3%</td>
-<td class="data row0 col3" id="T_4f577_row0_col3">7.863</td>
-<td class="data row0 col4" id="T_4f577_row0_col4">€89,500</td>
-<td class="data row0 col5" id="T_4f577_row0_col5">1.6%</td>
+<th class="row_heading level0 row0" id="T_f4b0b_level0_row0">1</th>
+<td class="data row0 col0" id="T_f4b0b_row0_col0">Coup</td>
+<td class="data row0 col1" id="T_f4b0b_row0_col1">2,913</td>
+<td class="data row0 col2" id="T_f4b0b_row0_col2">86.3%</td>
+<td class="data row0 col3" id="T_f4b0b_row0_col3">7.863</td>
+<td class="data row0 col4" id="T_f4b0b_row0_col4">€89,500</td>
+<td class="data row0 col5" id="T_f4b0b_row0_col5">1.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_4f577_level0_row1">5</th>
-<td class="data row1 col0" id="T_4f577_row1_col0">Sedan (2/4-deurs)</td>
-<td class="data row1 col1" id="T_4f577_row1_col1">15,472</td>
-<td class="data row1 col2" id="T_4f577_row1_col2">84.1%</td>
-<td class="data row1 col3" id="T_4f577_row1_col3">7.035</td>
-<td class="data row1 col4" id="T_4f577_row1_col4">€59,500</td>
-<td class="data row1 col5" id="T_4f577_row1_col5">8.5%</td>
+<th class="row_heading level0 row1" id="T_f4b0b_level0_row1">5</th>
+<td class="data row1 col0" id="T_f4b0b_row1_col0">Sedan (2/4-deurs)</td>
+<td class="data row1 col1" id="T_f4b0b_row1_col1">15,472</td>
+<td class="data row1 col2" id="T_f4b0b_row1_col2">84.1%</td>
+<td class="data row1 col3" id="T_f4b0b_row1_col3">7.035</td>
+<td class="data row1 col4" id="T_f4b0b_row1_col4">€59,500</td>
+<td class="data row1 col5" id="T_f4b0b_row1_col5">8.5%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_4f577_level0_row2">4</th>
-<td class="data row2 col0" id="T_4f577_row2_col0">Overige carrosserie n</td>
-<td class="data row2 col1" id="T_4f577_row2_col1">2,494</td>
-<td class="data row2 col2" id="T_4f577_row2_col2">76.9%</td>
-<td class="data row2 col3" id="T_4f577_row2_col3">5.712</td>
-<td class="data row2 col4" id="T_4f577_row2_col4">€34,250</td>
-<td class="data row2 col5" id="T_4f577_row2_col5">1.4%</td>
+<th class="row_heading level0 row2" id="T_f4b0b_level0_row2">4</th>
+<td class="data row2 col0" id="T_f4b0b_row2_col0">Overige carrosserie n</td>
+<td class="data row2 col1" id="T_f4b0b_row2_col1">2,494</td>
+<td class="data row2 col2" id="T_f4b0b_row2_col2">76.9%</td>
+<td class="data row2 col3" id="T_f4b0b_row2_col3">5.712</td>
+<td class="data row2 col4" id="T_f4b0b_row2_col4">€34,250</td>
+<td class="data row2 col5" id="T_f4b0b_row2_col5">1.4%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_4f577_level0_row3">0</th>
-<td class="data row3 col0" id="T_4f577_row3_col0">Cabriolet</td>
-<td class="data row3 col1" id="T_4f577_row3_col1">5,290</td>
-<td class="data row3 col2" id="T_4f577_row3_col2">75.9%</td>
-<td class="data row3 col3" id="T_4f577_row3_col3">4.677</td>
-<td class="data row3 col4" id="T_4f577_row3_col4">€69,900</td>
-<td class="data row3 col5" id="T_4f577_row3_col5">2.9%</td>
+<th class="row_heading level0 row3" id="T_f4b0b_level0_row3">0</th>
+<td class="data row3 col0" id="T_f4b0b_row3_col0">Cabriolet</td>
+<td class="data row3 col1" id="T_f4b0b_row3_col1">5,290</td>
+<td class="data row3 col2" id="T_f4b0b_row3_col2">75.9%</td>
+<td class="data row3 col3" id="T_f4b0b_row3_col3">4.677</td>
+<td class="data row3 col4" id="T_f4b0b_row3_col4">€69,900</td>
+<td class="data row3 col5" id="T_f4b0b_row3_col5">2.9%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_4f577_level0_row4">6</th>
-<td class="data row4 col0" id="T_4f577_row4_col0">Stationwagon</td>
-<td class="data row4 col1" id="T_4f577_row4_col1">29,233</td>
-<td class="data row4 col2" id="T_4f577_row4_col2">74.2%</td>
-<td class="data row4 col3" id="T_4f577_row4_col3">4.709</td>
-<td class="data row4 col4" id="T_4f577_row4_col4">€69,500</td>
-<td class="data row4 col5" id="T_4f577_row4_col5">16.0%</td>
+<th class="row_heading level0 row4" id="T_f4b0b_level0_row4">6</th>
+<td class="data row4 col0" id="T_f4b0b_row4_col0">Stationwagon</td>
+<td class="data row4 col1" id="T_f4b0b_row4_col1">29,233</td>
+<td class="data row4 col2" id="T_f4b0b_row4_col2">74.2%</td>
+<td class="data row4 col3" id="T_f4b0b_row4_col3">4.709</td>
+<td class="data row4 col4" id="T_f4b0b_row4_col4">€69,500</td>
+<td class="data row4 col5" id="T_f4b0b_row4_col5">16.0%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row5" id="T_4f577_level0_row5">7</th>
-<td class="data row5 col0" id="T_4f577_row5_col0">Terreinwagen</td>
-<td class="data row5 col1" id="T_4f577_row5_col1">10,128</td>
-<td class="data row5 col2" id="T_4f577_row5_col2">72.9%</td>
-<td class="data row5 col3" id="T_4f577_row5_col3">4.649</td>
-<td class="data row5 col4" id="T_4f577_row5_col4">€169,400</td>
-<td class="data row5 col5" id="T_4f577_row5_col5">5.5%</td>
+<th class="row_heading level0 row5" id="T_f4b0b_level0_row5">7</th>
+<td class="data row5 col0" id="T_f4b0b_row5_col0">Terreinwagen</td>
+<td class="data row5 col1" id="T_f4b0b_row5_col1">10,128</td>
+<td class="data row5 col2" id="T_f4b0b_row5_col2">72.9%</td>
+<td class="data row5 col3" id="T_f4b0b_row5_col3">4.649</td>
+<td class="data row5 col4" id="T_f4b0b_row5_col4">€169,400</td>
+<td class="data row5 col5" id="T_f4b0b_row5_col5">5.5%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row6" id="T_4f577_level0_row6">2</th>
-<td class="data row6 col0" id="T_4f577_row6_col0">Hatchback (3/5-deurs)</td>
-<td class="data row6 col1" id="T_4f577_row6_col1">79,944</td>
-<td class="data row6 col2" id="T_4f577_row6_col2">71.9%</td>
-<td class="data row6 col3" id="T_4f577_row6_col3">5.614</td>
-<td class="data row6 col4" id="T_4f577_row6_col4">€49,500</td>
-<td class="data row6 col5" id="T_4f577_row6_col5">43.7%</td>
+<th class="row_heading level0 row6" id="T_f4b0b_level0_row6">2</th>
+<td class="data row6 col0" id="T_f4b0b_row6_col0">Hatchback (3/5-deurs)</td>
+<td class="data row6 col1" id="T_f4b0b_row6_col1">79,944</td>
+<td class="data row6 col2" id="T_f4b0b_row6_col2">71.9%</td>
+<td class="data row6 col3" id="T_f4b0b_row6_col3">5.614</td>
+<td class="data row6 col4" id="T_f4b0b_row6_col4">€49,500</td>
+<td class="data row6 col5" id="T_f4b0b_row6_col5">43.7%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row7" id="T_4f577_level0_row7">3</th>
-<td class="data row7 col0" id="T_4f577_row7_col0">MPV</td>
-<td class="data row7 col1" id="T_4f577_row7_col1">19,737</td>
-<td class="data row7 col2" id="T_4f577_row7_col2">69.2%</td>
-<td class="data row7 col3" id="T_4f577_row7_col3">3.879</td>
-<td class="data row7 col4" id="T_4f577_row7_col4">€49,990</td>
-<td class="data row7 col5" id="T_4f577_row7_col5">10.8%</td>
+<th class="row_heading level0 row7" id="T_f4b0b_level0_row7">3</th>
+<td class="data row7 col0" id="T_f4b0b_row7_col0">MPV</td>
+<td class="data row7 col1" id="T_f4b0b_row7_col1">19,737</td>
+<td class="data row7 col2" id="T_f4b0b_row7_col2">69.2%</td>
+<td class="data row7 col3" id="T_f4b0b_row7_col3">3.879</td>
+<td class="data row7 col4" id="T_f4b0b_row7_col4">€49,990</td>
+<td class="data row7 col5" id="T_f4b0b_row7_col5">10.8%</td>
 </tr>
 </tbody>
 </table>
@@ -8550,181 +8558,181 @@ a.anchor-link {
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
-#T_fc811_row0_col2, #T_fc811_row1_col3 {
+#T_234c7_row0_col2, #T_234c7_row1_col3 {
   background-color: #2f8f6b;
   color: #f1f1f1;
 }
-#T_fc811_row0_col3 {
+#T_234c7_row0_col3 {
   background-color: #70b19c;
   color: #f1f1f1;
 }
-#T_fc811_row1_col2 {
+#T_234c7_row1_col2 {
   background-color: #54a287;
   color: #f1f1f1;
 }
-#T_fc811_row2_col2 {
+#T_234c7_row2_col2 {
   background-color: #5ea78e;
   color: #f1f1f1;
 }
-#T_fc811_row2_col3 {
+#T_234c7_row2_col3 {
   background-color: #69ad96;
   color: #f1f1f1;
 }
-#T_fc811_row3_col2 {
+#T_234c7_row3_col2 {
   background-color: #62a991;
   color: #f1f1f1;
 }
-#T_fc811_row3_col3 {
+#T_234c7_row3_col3 {
   background-color: #6fb09b;
   color: #f1f1f1;
 }
-#T_fc811_row4_col2 {
+#T_234c7_row4_col2 {
   background-color: #93c3b6;
   color: #000000;
 }
-#T_fc811_row4_col3 {
+#T_234c7_row4_col3 {
   background-color: #5fa88f;
   color: #f1f1f1;
 }
-#T_fc811_row5_col2 {
+#T_234c7_row5_col2 {
   background-color: #98c5ba;
   color: #000000;
 }
-#T_fc811_row5_col3 {
+#T_234c7_row5_col3 {
   background-color: #5ba68c;
   color: #f1f1f1;
 }
-#T_fc811_row6_col2 {
+#T_234c7_row6_col2 {
   background-color: #a3cbc2;
   color: #000000;
 }
-#T_fc811_row6_col3 {
+#T_234c7_row6_col3 {
   background-color: #7fb8a7;
   color: #000000;
 }
-#T_fc811_row7_col2 {
+#T_234c7_row7_col2 {
   background-color: #a9cec6;
   color: #000000;
 }
-#T_fc811_row7_col3 {
+#T_234c7_row7_col3 {
   background-color: #b9d7d2;
   color: #000000;
 }
-#T_fc811_row8_col2 {
+#T_234c7_row8_col2 {
   background-color: #bfdad7;
   color: #000000;
 }
-#T_fc811_row8_col3, #T_fc811_row9_col2 {
+#T_234c7_row8_col3, #T_234c7_row9_col2 {
   background-color: #eaf0f7;
   color: #000000;
 }
-#T_fc811_row9_col3 {
+#T_234c7_row9_col3 {
   background-color: #bbd8d4;
   color: #000000;
 }
 </style>
-<table id="T_fc811">
+<table id="T_234c7">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_fc811_level0_col0">Brand</th>
-<th class="col_heading level0 col1" id="T_fc811_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_fc811_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_fc811_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_fc811_level0_col4">Median Price</th>
-<th class="col_heading level0 col5" id="T_fc811_level0_col5">Ad Share</th>
+<th class="col_heading level0 col0" id="T_234c7_level0_col0">Brand</th>
+<th class="col_heading level0 col1" id="T_234c7_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_234c7_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_234c7_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_234c7_level0_col4">Median Price</th>
+<th class="col_heading level0 col5" id="T_234c7_level0_col5">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_fc811_level0_row0">12</th>
-<td class="data row0 col0" id="T_fc811_row0_col0">AUDI</td>
-<td class="data row0 col1" id="T_fc811_row0_col1">7,062</td>
-<td class="data row0 col2" id="T_fc811_row0_col2">84.5%</td>
-<td class="data row0 col3" id="T_fc811_row0_col3">6.658</td>
-<td class="data row0 col4" id="T_fc811_row0_col4">€122,475</td>
-<td class="data row0 col5" id="T_fc811_row0_col5">3.9%</td>
+<th class="row_heading level0 row0" id="T_234c7_level0_row0">12</th>
+<td class="data row0 col0" id="T_234c7_row0_col0">AUDI</td>
+<td class="data row0 col1" id="T_234c7_row0_col1">7,062</td>
+<td class="data row0 col2" id="T_234c7_row0_col2">84.5%</td>
+<td class="data row0 col3" id="T_234c7_row0_col3">6.658</td>
+<td class="data row0 col4" id="T_234c7_row0_col4">€122,475</td>
+<td class="data row0 col5" id="T_234c7_row0_col5">3.9%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_fc811_level0_row1">37</th>
-<td class="data row1 col0" id="T_fc811_row1_col0">DAEWOO</td>
-<td class="data row1 col1" id="T_fc811_row1_col1">1,070</td>
-<td class="data row1 col2" id="T_fc811_row1_col2">82.9%</td>
-<td class="data row1 col3" id="T_fc811_row1_col3">7.456</td>
-<td class="data row1 col4" id="T_fc811_row1_col4">€9,995</td>
-<td class="data row1 col5" id="T_fc811_row1_col5">0.6%</td>
+<th class="row_heading level0 row1" id="T_234c7_level0_row1">37</th>
+<td class="data row1 col0" id="T_234c7_row1_col0">DAEWOO</td>
+<td class="data row1 col1" id="T_234c7_row1_col1">1,070</td>
+<td class="data row1 col2" id="T_234c7_row1_col2">82.9%</td>
+<td class="data row1 col3" id="T_234c7_row1_col3">7.456</td>
+<td class="data row1 col4" id="T_234c7_row1_col4">€9,995</td>
+<td class="data row1 col5" id="T_234c7_row1_col5">0.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_fc811_level0_row2">40</th>
-<td class="data row2 col0" id="T_fc811_row2_col0">DAIHATSU</td>
-<td class="data row2 col1" id="T_fc811_row2_col1">1,052</td>
-<td class="data row2 col2" id="T_fc811_row2_col2">82.5%</td>
-<td class="data row2 col3" id="T_fc811_row2_col3">6.743</td>
-<td class="data row2 col4" id="T_fc811_row2_col4">€19,500</td>
-<td class="data row2 col5" id="T_fc811_row2_col5">0.6%</td>
+<th class="row_heading level0 row2" id="T_234c7_level0_row2">40</th>
+<td class="data row2 col0" id="T_234c7_row2_col0">DAIHATSU</td>
+<td class="data row2 col1" id="T_234c7_row2_col1">1,052</td>
+<td class="data row2 col2" id="T_234c7_row2_col2">82.5%</td>
+<td class="data row2 col3" id="T_234c7_row2_col3">6.743</td>
+<td class="data row2 col4" id="T_234c7_row2_col4">€19,500</td>
+<td class="data row2 col5" id="T_234c7_row2_col5">0.6%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_fc811_level0_row3">3</th>
-<td class="data row3 col0" id="T_fc811_row3_col0">ALFA ROMEO</td>
-<td class="data row3 col1" id="T_fc811_row3_col1">1,577</td>
-<td class="data row3 col2" id="T_fc811_row3_col2">82.4%</td>
-<td class="data row3 col3" id="T_fc811_row3_col3">6.674</td>
-<td class="data row3 col4" id="T_fc811_row3_col4">€44,950</td>
-<td class="data row3 col5" id="T_fc811_row3_col5">0.9%</td>
+<th class="row_heading level0 row3" id="T_234c7_level0_row3">3</th>
+<td class="data row3 col0" id="T_234c7_row3_col0">ALFA ROMEO</td>
+<td class="data row3 col1" id="T_234c7_row3_col1">1,577</td>
+<td class="data row3 col2" id="T_234c7_row3_col2">82.4%</td>
+<td class="data row3 col3" id="T_234c7_row3_col3">6.674</td>
+<td class="data row3 col4" id="T_234c7_row3_col4">€44,950</td>
+<td class="data row3 col5" id="T_234c7_row3_col5">0.9%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_fc811_level0_row4">187</th>
-<td class="data row4 col0" id="T_fc811_row4_col0">VOLKSWAGEN</td>
-<td class="data row4 col1" id="T_fc811_row4_col1">22,148</td>
-<td class="data row4 col2" id="T_fc811_row4_col2">80.3%</td>
-<td class="data row4 col3" id="T_fc811_row4_col3">6.862</td>
-<td class="data row4 col4" id="T_fc811_row4_col4">€69,000</td>
-<td class="data row4 col5" id="T_fc811_row4_col5">12.1%</td>
+<th class="row_heading level0 row4" id="T_234c7_level0_row4">187</th>
+<td class="data row4 col0" id="T_234c7_row4_col0">VOLKSWAGEN</td>
+<td class="data row4 col1" id="T_234c7_row4_col1">22,148</td>
+<td class="data row4 col2" id="T_234c7_row4_col2">80.3%</td>
+<td class="data row4 col3" id="T_234c7_row4_col3">6.862</td>
+<td class="data row4 col4" id="T_234c7_row4_col4">€69,000</td>
+<td class="data row4 col5" id="T_234c7_row4_col5">12.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row5" id="T_fc811_level0_row5">20</th>
-<td class="data row5 col0" id="T_fc811_row5_col0">BMW</td>
-<td class="data row5 col1" id="T_fc811_row5_col1">9,259</td>
-<td class="data row5 col2" id="T_fc811_row5_col2">80.1%</td>
-<td class="data row5 col3" id="T_fc811_row5_col3">6.919</td>
-<td class="data row5 col4" id="T_fc811_row5_col4">€119,900</td>
-<td class="data row5 col5" id="T_fc811_row5_col5">5.1%</td>
+<th class="row_heading level0 row5" id="T_234c7_level0_row5">20</th>
+<td class="data row5 col0" id="T_234c7_row5_col0">BMW</td>
+<td class="data row5 col1" id="T_234c7_row5_col1">9,259</td>
+<td class="data row5 col2" id="T_234c7_row5_col2">80.1%</td>
+<td class="data row5 col3" id="T_234c7_row5_col3">6.919</td>
+<td class="data row5 col4" id="T_234c7_row5_col4">€119,900</td>
+<td class="data row5 col5" id="T_234c7_row5_col5">5.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row6" id="T_fc811_level0_row6">123</th>
-<td class="data row6 col0" id="T_fc811_row6_col0">MERCEDES</td>
-<td class="data row6 col1" id="T_fc811_row6_col1">7,809</td>
-<td class="data row6 col2" id="T_fc811_row6_col2">79.6%</td>
-<td class="data row6 col3" id="T_fc811_row6_col3">6.481</td>
-<td class="data row6 col4" id="T_fc811_row6_col4">€124,500</td>
-<td class="data row6 col5" id="T_fc811_row6_col5">4.3%</td>
+<th class="row_heading level0 row6" id="T_234c7_level0_row6">123</th>
+<td class="data row6 col0" id="T_234c7_row6_col0">MERCEDES</td>
+<td class="data row6 col1" id="T_234c7_row6_col1">7,809</td>
+<td class="data row6 col2" id="T_234c7_row6_col2">79.6%</td>
+<td class="data row6 col3" id="T_234c7_row6_col3">6.481</td>
+<td class="data row6 col4" id="T_234c7_row6_col4">€124,500</td>
+<td class="data row6 col5" id="T_234c7_row6_col5">4.3%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row7" id="T_fc811_level0_row7">165</th>
-<td class="data row7 col0" id="T_fc811_row7_col0">SEAT</td>
-<td class="data row7 col1" id="T_fc811_row7_col1">4,906</td>
-<td class="data row7 col2" id="T_fc811_row7_col2">79.4%</td>
-<td class="data row7 col3" id="T_fc811_row7_col3">5.771</td>
-<td class="data row7 col4" id="T_fc811_row7_col4">€47,125</td>
-<td class="data row7 col5" id="T_fc811_row7_col5">2.7%</td>
+<th class="row_heading level0 row7" id="T_234c7_level0_row7">165</th>
+<td class="data row7 col0" id="T_234c7_row7_col0">SEAT</td>
+<td class="data row7 col1" id="T_234c7_row7_col1">4,906</td>
+<td class="data row7 col2" id="T_234c7_row7_col2">79.4%</td>
+<td class="data row7 col3" id="T_234c7_row7_col3">5.771</td>
+<td class="data row7 col4" id="T_234c7_row7_col4">€47,125</td>
+<td class="data row7 col5" id="T_234c7_row7_col5">2.7%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row8" id="T_fc811_level0_row8">120</th>
-<td class="data row8 col0" id="T_fc811_row8_col0">MAZDA</td>
-<td class="data row8 col1" id="T_fc811_row8_col1">2,398</td>
-<td class="data row8 col2" id="T_fc811_row8_col2">78.4%</td>
-<td class="data row8 col3" id="T_fc811_row8_col3">5.169</td>
-<td class="data row8 col4" id="T_fc811_row8_col4">€33,675</td>
-<td class="data row8 col5" id="T_fc811_row8_col5">1.3%</td>
+<th class="row_heading level0 row8" id="T_234c7_level0_row8">120</th>
+<td class="data row8 col0" id="T_234c7_row8_col0">MAZDA</td>
+<td class="data row8 col1" id="T_234c7_row8_col1">2,398</td>
+<td class="data row8 col2" id="T_234c7_row8_col2">78.4%</td>
+<td class="data row8 col3" id="T_234c7_row8_col3">5.169</td>
+<td class="data row8 col4" id="T_234c7_row8_col4">€33,675</td>
+<td class="data row8 col5" id="T_234c7_row8_col5">1.3%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row9" id="T_fc811_level0_row9">31</th>
-<td class="data row9 col0" id="T_fc811_row9_col0">CHEVROLET</td>
-<td class="data row9 col1" id="T_fc811_row9_col1">1,513</td>
-<td class="data row9 col2" id="T_fc811_row9_col2">76.7%</td>
-<td class="data row9 col3" id="T_fc811_row9_col3">5.743</td>
-<td class="data row9 col4" id="T_fc811_row9_col4">€38,500</td>
-<td class="data row9 col5" id="T_fc811_row9_col5">0.8%</td>
+<th class="row_heading level0 row9" id="T_234c7_level0_row9">31</th>
+<td class="data row9 col0" id="T_234c7_row9_col0">CHEVROLET</td>
+<td class="data row9 col1" id="T_234c7_row9_col1">1,513</td>
+<td class="data row9 col2" id="T_234c7_row9_col2">76.7%</td>
+<td class="data row9 col3" id="T_234c7_row9_col3">5.743</td>
+<td class="data row9 col4" id="T_234c7_row9_col4">€38,500</td>
+<td class="data row9 col5" id="T_234c7_row9_col5">0.8%</td>
 </tr>
 </tbody>
 </table>
@@ -8790,59 +8798,59 @@ a.anchor-link {
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_8b748">
+<table id="T_90f9e">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_8b748_level0_col0">Photo Count Band</th>
-<th class="col_heading level0 col1" id="T_8b748_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_8b748_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_8b748_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_8b748_level0_col4">Median Days Live</th>
-<th class="col_heading level0 col5" id="T_8b748_level0_col5">Median Price</th>
-<th class="col_heading level0 col6" id="T_8b748_level0_col6">Ad Share</th>
+<th class="col_heading level0 col0" id="T_90f9e_level0_col0">Photo Count Band</th>
+<th class="col_heading level0 col1" id="T_90f9e_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_90f9e_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_90f9e_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_90f9e_level0_col4">Median Days Live</th>
+<th class="col_heading level0 col5" id="T_90f9e_level0_col5">Median Price</th>
+<th class="col_heading level0 col6" id="T_90f9e_level0_col6">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_8b748_level0_row0">0</th>
-<td class="data row0 col0" id="T_8b748_row0_col0">0-5</td>
-<td class="data row0 col1" id="T_8b748_row0_col1">8,630</td>
-<td class="data row0 col2" id="T_8b748_row0_col2">79.7%</td>
-<td class="data row0 col3" id="T_8b748_row0_col3">8.092</td>
-<td class="data row0 col4" id="T_8b748_row0_col4">31.000</td>
-<td class="data row0 col5" id="T_8b748_row0_col5">€18,500</td>
-<td class="data row0 col6" id="T_8b748_row0_col6">4.7%</td>
+<th class="row_heading level0 row0" id="T_90f9e_level0_row0">0</th>
+<td class="data row0 col0" id="T_90f9e_row0_col0">0-5</td>
+<td class="data row0 col1" id="T_90f9e_row0_col1">8,630</td>
+<td class="data row0 col2" id="T_90f9e_row0_col2">79.7%</td>
+<td class="data row0 col3" id="T_90f9e_row0_col3">8.092</td>
+<td class="data row0 col4" id="T_90f9e_row0_col4">31.000</td>
+<td class="data row0 col5" id="T_90f9e_row0_col5">€18,500</td>
+<td class="data row0 col6" id="T_90f9e_row0_col6">4.7%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_8b748_level0_row1">1</th>
-<td class="data row1 col0" id="T_8b748_row1_col0">6-12</td>
-<td class="data row1 col1" id="T_8b748_row1_col1">61,208</td>
-<td class="data row1 col2" id="T_8b748_row1_col2">81.6%</td>
-<td class="data row1 col3" id="T_8b748_row1_col3">6.968</td>
-<td class="data row1 col4" id="T_8b748_row1_col4">31.000</td>
-<td class="data row1 col5" id="T_8b748_row1_col5">€29,000</td>
-<td class="data row1 col6" id="T_8b748_row1_col6">33.4%</td>
+<th class="row_heading level0 row1" id="T_90f9e_level0_row1">1</th>
+<td class="data row1 col0" id="T_90f9e_row1_col0">6-12</td>
+<td class="data row1 col1" id="T_90f9e_row1_col1">61,208</td>
+<td class="data row1 col2" id="T_90f9e_row1_col2">81.6%</td>
+<td class="data row1 col3" id="T_90f9e_row1_col3">6.968</td>
+<td class="data row1 col4" id="T_90f9e_row1_col4">31.000</td>
+<td class="data row1 col5" id="T_90f9e_row1_col5">€29,000</td>
+<td class="data row1 col6" id="T_90f9e_row1_col6">33.4%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_8b748_level0_row2">2</th>
-<td class="data row2 col0" id="T_8b748_row2_col0">13-20</td>
-<td class="data row2 col1" id="T_8b748_row2_col1">57,750</td>
-<td class="data row2 col2" id="T_8b748_row2_col2">73.0%</td>
-<td class="data row2 col3" id="T_8b748_row2_col3">4.934</td>
-<td class="data row2 col4" id="T_8b748_row2_col4">31.000</td>
-<td class="data row2 col5" id="T_8b748_row2_col5">€59,950</td>
-<td class="data row2 col6" id="T_8b748_row2_col6">31.5%</td>
+<th class="row_heading level0 row2" id="T_90f9e_level0_row2">2</th>
+<td class="data row2 col0" id="T_90f9e_row2_col0">13-20</td>
+<td class="data row2 col1" id="T_90f9e_row2_col1">57,750</td>
+<td class="data row2 col2" id="T_90f9e_row2_col2">73.0%</td>
+<td class="data row2 col3" id="T_90f9e_row2_col3">4.934</td>
+<td class="data row2 col4" id="T_90f9e_row2_col4">31.000</td>
+<td class="data row2 col5" id="T_90f9e_row2_col5">€59,950</td>
+<td class="data row2 col6" id="T_90f9e_row2_col6">31.5%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_8b748_level0_row3">3</th>
-<td class="data row3 col0" id="T_8b748_row3_col0">21+</td>
-<td class="data row3 col1" id="T_8b748_row3_col1">55,474</td>
-<td class="data row3 col2" id="T_8b748_row3_col2">65.0%</td>
-<td class="data row3 col3" id="T_8b748_row3_col3">3.488</td>
-<td class="data row3 col4" id="T_8b748_row3_col4">31.000</td>
-<td class="data row3 col5" id="T_8b748_row3_col5">€117,450</td>
-<td class="data row3 col6" id="T_8b748_row3_col6">30.3%</td>
+<th class="row_heading level0 row3" id="T_90f9e_level0_row3">3</th>
+<td class="data row3 col0" id="T_90f9e_row3_col0">21+</td>
+<td class="data row3 col1" id="T_90f9e_row3_col1">55,474</td>
+<td class="data row3 col2" id="T_90f9e_row3_col2">65.0%</td>
+<td class="data row3 col3" id="T_90f9e_row3_col3">3.488</td>
+<td class="data row3 col4" id="T_90f9e_row3_col4">31.000</td>
+<td class="data row3 col5" id="T_90f9e_row3_col5">€117,450</td>
+<td class="data row3 col6" id="T_90f9e_row3_col6">30.3%</td>
 </tr>
 </tbody>
 </table>
@@ -8894,7 +8902,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h4 id="Listing-Lifecycle-Signals">Listing Lifecycle Signals<a class="anchor-link" href="#Listing-Lifecycle-Signals">¶</a></h4><ul>
-<li>Fresh listings can be checked for early traction.</li>
+<li>Check early if new listings are getting leads.</li>
 <li>Mid-life listings can be compared against segment benchmarks.</li>
 <li>Stale listings with weak lead performance may need a refresh, price check, or promotion.</li>
 <li>These lifecycle patterns are descriptive, not causal. I would use them as triggers for diagnosis, not as proof that listing age drives lead performance.</li>
@@ -8929,75 +8937,75 @@ a.anchor-link {
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_d6009">
+<table id="T_311a0">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_d6009_level0_col0">Days Live Band</th>
-<th class="col_heading level0 col1" id="T_d6009_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_d6009_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_d6009_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_d6009_level0_col4">Median Leads/Ad</th>
-<th class="col_heading level0 col5" id="T_d6009_level0_col5">Median Price</th>
-<th class="col_heading level0 col6" id="T_d6009_level0_col6">Median Photos</th>
-<th class="col_heading level0 col7" id="T_d6009_level0_col7">Ad Share</th>
+<th class="col_heading level0 col0" id="T_311a0_level0_col0">Days Live Band</th>
+<th class="col_heading level0 col1" id="T_311a0_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_311a0_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_311a0_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_311a0_level0_col4">Median Leads/Ad</th>
+<th class="col_heading level0 col5" id="T_311a0_level0_col5">Median Price</th>
+<th class="col_heading level0 col6" id="T_311a0_level0_col6">Median Photos</th>
+<th class="col_heading level0 col7" id="T_311a0_level0_col7">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_d6009_level0_row0">0</th>
-<td class="data row0 col0" id="T_d6009_row0_col0">0-3</td>
-<td class="data row0 col1" id="T_d6009_row0_col1">14,771</td>
-<td class="data row0 col2" id="T_d6009_row0_col2">71.3%</td>
-<td class="data row0 col3" id="T_d6009_row0_col3">5.486</td>
-<td class="data row0 col4" id="T_d6009_row0_col4">3.000</td>
-<td class="data row0 col5" id="T_d6009_row0_col5">€29,990</td>
-<td class="data row0 col6" id="T_d6009_row0_col6">12.000</td>
-<td class="data row0 col7" id="T_d6009_row0_col7">8.1%</td>
+<th class="row_heading level0 row0" id="T_311a0_level0_row0">0</th>
+<td class="data row0 col0" id="T_311a0_row0_col0">0-3</td>
+<td class="data row0 col1" id="T_311a0_row0_col1">14,771</td>
+<td class="data row0 col2" id="T_311a0_row0_col2">71.3%</td>
+<td class="data row0 col3" id="T_311a0_row0_col3">5.486</td>
+<td class="data row0 col4" id="T_311a0_row0_col4">3.000</td>
+<td class="data row0 col5" id="T_311a0_row0_col5">€29,990</td>
+<td class="data row0 col6" id="T_311a0_row0_col6">12.000</td>
+<td class="data row0 col7" id="T_311a0_row0_col7">8.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_d6009_level0_row1">1</th>
-<td class="data row1 col0" id="T_d6009_row1_col0">4-7</td>
-<td class="data row1 col1" id="T_d6009_row1_col1">14,766</td>
-<td class="data row1 col2" id="T_d6009_row1_col2">79.8%</td>
-<td class="data row1 col3" id="T_d6009_row1_col3">7.916</td>
-<td class="data row1 col4" id="T_d6009_row1_col4">4.000</td>
-<td class="data row1 col5" id="T_d6009_row1_col5">€36,500</td>
-<td class="data row1 col6" id="T_d6009_row1_col6">14.000</td>
-<td class="data row1 col7" id="T_d6009_row1_col7">8.1%</td>
+<th class="row_heading level0 row1" id="T_311a0_level0_row1">1</th>
+<td class="data row1 col0" id="T_311a0_row1_col0">4-7</td>
+<td class="data row1 col1" id="T_311a0_row1_col1">14,766</td>
+<td class="data row1 col2" id="T_311a0_row1_col2">79.8%</td>
+<td class="data row1 col3" id="T_311a0_row1_col3">7.916</td>
+<td class="data row1 col4" id="T_311a0_row1_col4">4.000</td>
+<td class="data row1 col5" id="T_311a0_row1_col5">€36,500</td>
+<td class="data row1 col6" id="T_311a0_row1_col6">14.000</td>
+<td class="data row1 col7" id="T_311a0_row1_col7">8.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_d6009_level0_row2">2</th>
-<td class="data row2 col0" id="T_d6009_row2_col0">8-14</td>
-<td class="data row2 col1" id="T_d6009_row2_col1">16,583</td>
-<td class="data row2 col2" id="T_d6009_row2_col2">81.7%</td>
-<td class="data row2 col3" id="T_d6009_row2_col3">7.199</td>
-<td class="data row2 col4" id="T_d6009_row2_col4">4.000</td>
-<td class="data row2 col5" id="T_d6009_row2_col5">€39,990</td>
-<td class="data row2 col6" id="T_d6009_row2_col6">15.000</td>
-<td class="data row2 col7" id="T_d6009_row2_col7">9.1%</td>
+<th class="row_heading level0 row2" id="T_311a0_level0_row2">2</th>
+<td class="data row2 col0" id="T_311a0_row2_col0">8-14</td>
+<td class="data row2 col1" id="T_311a0_row2_col1">16,583</td>
+<td class="data row2 col2" id="T_311a0_row2_col2">81.7%</td>
+<td class="data row2 col3" id="T_311a0_row2_col3">7.199</td>
+<td class="data row2 col4" id="T_311a0_row2_col4">4.000</td>
+<td class="data row2 col5" id="T_311a0_row2_col5">€39,990</td>
+<td class="data row2 col6" id="T_311a0_row2_col6">15.000</td>
+<td class="data row2 col7" id="T_311a0_row2_col7">9.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row3" id="T_d6009_level0_row3">3</th>
-<td class="data row3 col0" id="T_d6009_row3_col0">15-31</td>
-<td class="data row3 col1" id="T_d6009_row3_col1">127,195</td>
-<td class="data row3 col2" id="T_d6009_row3_col2">70.9%</td>
-<td class="data row3 col3" id="T_d6009_row3_col3">4.483</td>
-<td class="data row3 col4" id="T_d6009_row3_col4">2.000</td>
-<td class="data row3 col5" id="T_d6009_row3_col5">€69,500</td>
-<td class="data row3 col6" id="T_d6009_row3_col6">16.000</td>
-<td class="data row3 col7" id="T_d6009_row3_col7">69.5%</td>
+<th class="row_heading level0 row3" id="T_311a0_level0_row3">3</th>
+<td class="data row3 col0" id="T_311a0_row3_col0">15-31</td>
+<td class="data row3 col1" id="T_311a0_row3_col1">127,195</td>
+<td class="data row3 col2" id="T_311a0_row3_col2">70.9%</td>
+<td class="data row3 col3" id="T_311a0_row3_col3">4.483</td>
+<td class="data row3 col4" id="T_311a0_row3_col4">2.000</td>
+<td class="data row3 col5" id="T_311a0_row3_col5">€69,500</td>
+<td class="data row3 col6" id="T_311a0_row3_col6">16.000</td>
+<td class="data row3 col7" id="T_311a0_row3_col7">69.5%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row4" id="T_d6009_level0_row4">4</th>
-<td class="data row4 col0" id="T_d6009_row4_col0">31+</td>
-<td class="data row4 col1" id="T_d6009_row4_col1">9,747</td>
-<td class="data row4 col2" id="T_d6009_row4_col2">92.8%</td>
-<td class="data row4 col3" id="T_d6009_row4_col3">8.951</td>
-<td class="data row4 col4" id="T_d6009_row4_col4">6.000</td>
-<td class="data row4 col5" id="T_d6009_row4_col5">€37,500</td>
-<td class="data row4 col6" id="T_d6009_row4_col6">11.000</td>
-<td class="data row4 col7" id="T_d6009_row4_col7">5.3%</td>
+<th class="row_heading level0 row4" id="T_311a0_level0_row4">4</th>
+<td class="data row4 col0" id="T_311a0_row4_col0">31+</td>
+<td class="data row4 col1" id="T_311a0_row4_col1">9,747</td>
+<td class="data row4 col2" id="T_311a0_row4_col2">92.8%</td>
+<td class="data row4 col3" id="T_311a0_row4_col3">8.951</td>
+<td class="data row4 col4" id="T_311a0_row4_col4">6.000</td>
+<td class="data row4 col5" id="T_311a0_row4_col5">€37,500</td>
+<td class="data row4 col6" id="T_311a0_row4_col6">11.000</td>
+<td class="data row4 col7" id="T_311a0_row4_col7">5.3%</td>
 </tr>
 </tbody>
 </table>
@@ -9036,57 +9044,57 @@ a.anchor-link {
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
 </style>
-<table id="T_5a76b">
+<table id="T_81aee">
 <thead>
 <tr>
 <th class="blank level0"> </th>
-<th class="col_heading level0 col0" id="T_5a76b_level0_col0">Lifecycle Stage</th>
-<th class="col_heading level0 col1" id="T_5a76b_level0_col1">Ads</th>
-<th class="col_heading level0 col2" id="T_5a76b_level0_col2">Lead Rate</th>
-<th class="col_heading level0 col3" id="T_5a76b_level0_col3">Avg Leads/Ad</th>
-<th class="col_heading level0 col4" id="T_5a76b_level0_col4">Median Leads/Ad</th>
-<th class="col_heading level0 col5" id="T_5a76b_level0_col5">Median Price</th>
-<th class="col_heading level0 col6" id="T_5a76b_level0_col6">Median Photos</th>
-<th class="col_heading level0 col7" id="T_5a76b_level0_col7">Median Mileage</th>
-<th class="col_heading level0 col8" id="T_5a76b_level0_col8">Ad Share</th>
+<th class="col_heading level0 col0" id="T_81aee_level0_col0">Lifecycle Stage</th>
+<th class="col_heading level0 col1" id="T_81aee_level0_col1">Ads</th>
+<th class="col_heading level0 col2" id="T_81aee_level0_col2">Lead Rate</th>
+<th class="col_heading level0 col3" id="T_81aee_level0_col3">Avg Leads/Ad</th>
+<th class="col_heading level0 col4" id="T_81aee_level0_col4">Median Leads/Ad</th>
+<th class="col_heading level0 col5" id="T_81aee_level0_col5">Median Price</th>
+<th class="col_heading level0 col6" id="T_81aee_level0_col6">Median Photos</th>
+<th class="col_heading level0 col7" id="T_81aee_level0_col7">Median Mileage</th>
+<th class="col_heading level0 col8" id="T_81aee_level0_col8">Ad Share</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th class="row_heading level0 row0" id="T_5a76b_level0_row0">0</th>
-<td class="data row0 col0" id="T_5a76b_row0_col0">Fresh: 0-7 days</td>
-<td class="data row0 col1" id="T_5a76b_row0_col1">29,537</td>
-<td class="data row0 col2" id="T_5a76b_row0_col2">75.5%</td>
-<td class="data row0 col3" id="T_5a76b_row0_col3">6.701</td>
-<td class="data row0 col4" id="T_5a76b_row0_col4">3.000</td>
-<td class="data row0 col5" id="T_5a76b_row0_col5">€33,500</td>
-<td class="data row0 col6" id="T_5a76b_row0_col6">13.000</td>
-<td class="data row0 col7" id="T_5a76b_row0_col7">155,151</td>
-<td class="data row0 col8" id="T_5a76b_row0_col8">16.1%</td>
+<th class="row_heading level0 row0" id="T_81aee_level0_row0">0</th>
+<td class="data row0 col0" id="T_81aee_row0_col0">Fresh: 0-7 days</td>
+<td class="data row0 col1" id="T_81aee_row0_col1">29,537</td>
+<td class="data row0 col2" id="T_81aee_row0_col2">75.5%</td>
+<td class="data row0 col3" id="T_81aee_row0_col3">6.701</td>
+<td class="data row0 col4" id="T_81aee_row0_col4">3.000</td>
+<td class="data row0 col5" id="T_81aee_row0_col5">€33,500</td>
+<td class="data row0 col6" id="T_81aee_row0_col6">13.000</td>
+<td class="data row0 col7" id="T_81aee_row0_col7">155,151</td>
+<td class="data row0 col8" id="T_81aee_row0_col8">16.1%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row1" id="T_5a76b_level0_row1">1</th>
-<td class="data row1 col0" id="T_5a76b_row1_col0">Mid-life: 8-31 days</td>
-<td class="data row1 col1" id="T_5a76b_row1_col1">143,778</td>
-<td class="data row1 col2" id="T_5a76b_row1_col2">72.1%</td>
-<td class="data row1 col3" id="T_5a76b_row1_col3">4.796</td>
-<td class="data row1 col4" id="T_5a76b_row1_col4">2.000</td>
-<td class="data row1 col5" id="T_5a76b_row1_col5">€66,900</td>
-<td class="data row1 col6" id="T_5a76b_row1_col6">16.000</td>
-<td class="data row1 col7" id="T_5a76b_row1_col7">132,728</td>
-<td class="data row1 col8" id="T_5a76b_row1_col8">78.5%</td>
+<th class="row_heading level0 row1" id="T_81aee_level0_row1">1</th>
+<td class="data row1 col0" id="T_81aee_row1_col0">Mid-life: 8-31 days</td>
+<td class="data row1 col1" id="T_81aee_row1_col1">143,778</td>
+<td class="data row1 col2" id="T_81aee_row1_col2">72.1%</td>
+<td class="data row1 col3" id="T_81aee_row1_col3">4.796</td>
+<td class="data row1 col4" id="T_81aee_row1_col4">2.000</td>
+<td class="data row1 col5" id="T_81aee_row1_col5">€66,900</td>
+<td class="data row1 col6" id="T_81aee_row1_col6">16.000</td>
+<td class="data row1 col7" id="T_81aee_row1_col7">132,728</td>
+<td class="data row1 col8" id="T_81aee_row1_col8">78.5%</td>
 </tr>
 <tr>
-<th class="row_heading level0 row2" id="T_5a76b_level0_row2">2</th>
-<td class="data row2 col0" id="T_5a76b_row2_col0">Stale: 31+ days</td>
-<td class="data row2 col1" id="T_5a76b_row2_col1">9,747</td>
-<td class="data row2 col2" id="T_5a76b_row2_col2">92.8%</td>
-<td class="data row2 col3" id="T_5a76b_row2_col3">8.951</td>
-<td class="data row2 col4" id="T_5a76b_row2_col4">6.000</td>
-<td class="data row2 col5" id="T_5a76b_row2_col5">€37,500</td>
-<td class="data row2 col6" id="T_5a76b_row2_col6">11.000</td>
-<td class="data row2 col7" id="T_5a76b_row2_col7">169,400</td>
-<td class="data row2 col8" id="T_5a76b_row2_col8">5.3%</td>
+<th class="row_heading level0 row2" id="T_81aee_level0_row2">2</th>
+<td class="data row2 col0" id="T_81aee_row2_col0">Stale: 31+ days</td>
+<td class="data row2 col1" id="T_81aee_row2_col1">9,747</td>
+<td class="data row2 col2" id="T_81aee_row2_col2">92.8%</td>
+<td class="data row2 col3" id="T_81aee_row2_col3">8.951</td>
+<td class="data row2 col4" id="T_81aee_row2_col4">6.000</td>
+<td class="data row2 col5" id="T_81aee_row2_col5">€37,500</td>
+<td class="data row2 col6" id="T_81aee_row2_col6">11.000</td>
+<td class="data row2 col7" id="T_81aee_row2_col7">169,400</td>
+<td class="data row2 col8" id="T_81aee_row2_col8">5.3%</td>
 </tr>
 </tbody>
 </table>
