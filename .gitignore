@@ -5,6 +5,7 @@
 **/data/*.xlsx
 outputs/
 tmp/
+deliverables/**/backup/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
